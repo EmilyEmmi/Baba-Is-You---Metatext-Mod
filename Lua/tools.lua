@@ -145,6 +145,9 @@ end
 function getname(unit,checktext)
 	local result = unit.strings[UNITNAME]
 
+	if (unit.strings[UNITTYPE] == "text") and (string.sub(result, 1, 5) ~= "text_") then
+		result = "text_" .. result
+	end
 	if (unit.strings[UNITTYPE] == "text") and checktext == "text" then
 		result = "text"
 	end
