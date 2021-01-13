@@ -142,13 +142,13 @@ function getmat(m,checkallunit)
 	end
 end
 
-function getname(unit,checktext)
+function getname(unit,checktext,checktext2)
 	local result = unit.strings[UNITNAME]
 
 	if (unit.strings[UNITTYPE] == "text") and (string.sub(result, 1, 5) ~= "text_") then
 		result = "text_" .. result
 	end
-	if (unit.strings[UNITTYPE] == "text") and checktext == "text" then
+	if (unit.strings[UNITTYPE] == "text") and ((checktext == "text") or (checktext2 == true)) then
 		result = "text"
 	end
 
