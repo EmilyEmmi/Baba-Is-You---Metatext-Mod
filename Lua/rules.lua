@@ -27,6 +27,9 @@ function postrules(alreadyrun_)
 						if newword3 == "text" and newword2 == "is" then
 							newword3 = newword1
 						end
+						if newword3 == "not text" and newword2 == "is" then
+							newword3 = "not " .. newword1
+						end
 
 						local newrule = {newword1, newword2, newword3}
 						addoption(newrule,newconds,ids,false,nil,newtags)
