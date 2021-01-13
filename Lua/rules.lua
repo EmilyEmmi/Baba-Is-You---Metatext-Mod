@@ -24,12 +24,45 @@ function postrules(alreadyrun_)
 						local newword1 = a
 						local newword2 = rule[2]
 						local newword3 = rule[3]
-						if newword3 == "text" and newword2 == "is" then
-							newword3 = newword1
+						if newword3 == "text" then
+							if newword2 == "is" then
+								newword3 = newword1
+							elseif newword2 == "has" then
+								newword3 = "text_text"
+							end
 						end
-						if newword3 == "not text" and newword2 == "is" then
-							newword3 = "not " .. newword1
+						if newword3 == "not text" then
+							if newword2 == "is" then
+								newword3 = "not " .. newword1
+							elseif newword2 == "has" then
+								newword3 = "not text_text"
+							end
 						end
+
+						local newrule = {newword1, newword2, newword3}
+						addoption(newrule,newconds,ids,false,nil,newtags)
+					end
+				end
+			end
+			if rule[3] == "text" and (rule[2] == "follow" or rule[2] == "eat") then
+				for a,b in pairs(fullunitlist) do -- fullunitlist contains all units, is new
+					if (string.sub(a, 1, 5) == "text_") then
+						local newconds = {}
+						local newtags = {}
+
+						for c,d in ipairs(conds) do
+							table.insert(newconds, d)
+						end
+
+						for c,d in ipairs(tags) do
+							table.insert(newtags, d)
+						end
+
+						table.insert(newtags, "verbtext")
+
+						local newword1 = rule[1]
+						local newword2 = rule[2]
+						local newword3 = a
 
 						local newrule = {newword1, newword2, newword3}
 						addoption(newrule,newconds,ids,false,nil,newtags)
@@ -74,7 +107,7 @@ function postrules(alreadyrun_)
 					end
 
 					for i,mat in pairs(objectlist) do
-						if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= "text") and (string.sub(i, 1, 5) ~= "text_") then
+						if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= "text") and (i ~= "infinite loop") and (string.sub(i, 1, 5) ~= "text_") then
 							local newrule = {rule[1],rule[2],i}
 							local newconds = {}
 							for a,b in ipairs(conds) do
@@ -112,7 +145,7 @@ function postrules(alreadyrun_)
 				end
 
 				for i,mat in pairs(objectlist) do
-					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= "text") and (string.sub(i, 1, 5) ~= "text_") then
+					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= "text") and (i ~= "infinite loop") and (string.sub(i, 1, 5) ~= "text_") then
 						local newrule = {i,rule[2],rule[3]}
 						local newconds = {}
 						for a,b in ipairs(conds) do
@@ -128,7 +161,7 @@ function postrules(alreadyrun_)
 
 			if (rule[1] == "all") and (string.sub(rule[3], 1, 4) == "not ") then
 				for i,mat in pairs(objectlist) do
-					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= "text") and (string.sub(i, 1, 5) ~= "text_") then
+					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= "text") and (i ~= "infinite loop") and (string.sub(i, 1, 5) ~= "text_") then
 						local newrule = {i,rule[2],rule[3]}
 						local newconds = {}
 						for a,b in ipairs(conds) do
