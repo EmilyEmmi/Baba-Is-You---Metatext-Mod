@@ -16,8 +16,14 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 		return
 	end
 
-	local checkedconds = checkedconds_ or {}
+	local checkedconds = {}
 	local ignorebroken = ignorebroken_ or false
+
+	if (checkedconds_ ~= nil) then
+		for i,v in pairs(checkedconds_) do
+			checkedconds[i] = v
+		end
+	end
 
 	-- 0 = bug, 1 = level, 2 = empty
 
@@ -163,7 +169,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 											for c,d in ipairs(unitmap[tileid]) do
 												if (d ~= unitid) and (alreadyfound[d] == nil) then
 													local unit = mmf.newObject(d)
-													local name_ = getname(unit,pname,pnot)
+													local name_ = getname(unit,pname,isnot)
 
 													if (pnot == false) then
 														if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -328,7 +334,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 										for c,d in ipairs(unitmap[tileid]) do
 											if (d ~= unitid) and (alreadyfound[d] == nil) then
 												local unit = mmf.newObject(d)
-												local name_ = getname(unit,pname,pnot)
+												local name_ = getname(unit,pname,isnot)
 
 												if (pnot == false) then
 													if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -486,7 +492,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 											for c,d in ipairs(unitmap[tileid]) do
 												if (d ~= unitid) and (alreadyfound[d] == nil) then
 													local unit = mmf.newObject(d)
-													local name_ = getname(unit,pname,pnot)
+													local name_ = getname(unit,pname,isnot)
 
 													if (pnot == false) then
 														if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -619,7 +625,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 												for c,d in ipairs(unitmap[tileid]) do
 													if (d ~= unitid) and (alreadyfound[d] == nil) then
 														local unit = mmf.newObject(d)
-														local name_ = getname(unit,pname,pnot)
+														local name_ = getname(unit,pname,isnot)
 
 														if (pnot == false) then
 															if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -752,7 +758,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
+															local name_ = getname(unit,pname,isnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -936,7 +942,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
+															local name_ = getname(unit,pname,isnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
@@ -1349,7 +1355,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
+															local name_ = getname(unit,pname,isnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -1523,7 +1529,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
+															local name_ = getname(unit,pname,isnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
@@ -1694,7 +1700,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
+															local name_ = getname(unit,pname,isnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -1868,7 +1874,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
+															local name_ = getname(unit,pname,isnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
@@ -2219,10 +2225,10 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 							local dconds = d[2]
 
 							if (checkedconds[tostring(dconds)] == nil) then
-								checkedconds[tostring(dconds)] = 1
-
 								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == "power") then
 									if (unitlists[drule[1]] ~= nil) then
+										checkedconds[tostring(dconds)] = 1
+
 										for e,f in ipairs(unitlists[drule[1]]) do
 											if testcond(dconds,f,x,y,nil,limit,checkedconds) then
 												found = true
@@ -2259,10 +2265,10 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 							local dconds = d[2]
 
 							if (checkedconds[tostring(dconds)] == nil) then
-								checkedconds[tostring(dconds)] = 1
-
 								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == "power") then
 									if (unitlists[drule[1]] ~= nil) then
+										checkedconds[tostring(dconds)] = 1
+
 										for e,f in ipairs(unitlists[drule[1]]) do
 											if testcond(dconds,f,x,y,nil,limit,checkedconds) then
 												found = true
