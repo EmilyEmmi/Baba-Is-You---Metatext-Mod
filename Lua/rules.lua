@@ -1077,3 +1077,183 @@ function grouprules()
 		end
 	end
 end
+function addoption(option,conds_,ids,visible,notrule,tags_)
+	--MF_alert(option[1] .. ", " .. option[2] .. ", " .. option[3])
+	
+	local visual = true
+	
+	if (visible ~= nil) then
+		visual = visible
+	end
+	
+	local conds = {}
+	
+	if (conds_ ~= nil) then
+		conds = conds_
+	else
+		print("nil conditions in rule: " .. option[1] .. ", " .. option[2] .. ", " .. option[3])
+	end
+	
+	local tags = tags_ or {}
+	
+	if (#option == 3) then
+		local rule = {option,conds,ids,tags}
+		table.insert(features, rule)
+		local target = option[1]
+		local verb = option[2]
+		local effect = option[3]
+	
+		if (featureindex[effect] == nil) then
+			featureindex[effect] = {}
+		end
+		
+		if (featureindex[target] == nil) then
+			featureindex[target] = {}
+		end
+		
+		if (featureindex[verb] == nil) then
+			featureindex[verb] = {}
+		end
+		
+		table.insert(featureindex[effect], rule)
+		
+		--[[
+		if (string.sub(effect, 1, 4) == "not ") and (string.sub(effect, 5) ~= target) then
+			local noteffect = string.sub(effect, 5)
+			
+			if (featureindex[noteffect] == nil) then
+				featureindex[noteffect] = {}
+			end
+			
+			MF_alert(target .. ", " .. verb .. ", " .. effect)
+			
+			table.insert(featureindex[noteffect], rule)
+		end
+		]]--
+		
+		table.insert(featureindex[verb], rule)
+		
+		if (target ~= effect) then
+			table.insert(featureindex[target], rule)
+		end
+		
+		if visual then
+			local visualrule = copyrule(rule)
+			table.insert(visualfeatures, visualrule)
+		end
+		
+		local groupcond = false
+		
+		if (target == "group") or (effect == "group") or (target == "not group") or (effect == "not group") then
+			groupcond = true
+		end
+		
+		if (notrule ~= nil) then
+			local notrule_effect = notrule[1]
+			local notrule_id = notrule[2]
+			
+			if (notfeatures[notrule_effect] == nil) then
+				notfeatures[notrule_effect] = {}
+			end
+			
+			local nr_e = notfeatures[notrule_effect]
+			
+			if (nr_e[notrule_id] == nil) then
+				nr_e[notrule_id] = {}
+			end
+			
+			local nr_i = nr_e[notrule_id]
+			
+			table.insert(nr_i, rule)
+		end
+		
+		if (#conds > 0) then
+			local addedto = {}
+			
+			for i,cond in ipairs(conds) do
+				local condname = cond[1]
+				if (string.sub(condname, 1, 4) == "not ") then
+					condname = string.sub(condname, 5)
+				end
+				
+				if (condfeatureindex[condname] == nil) then
+					condfeatureindex[condname] = {}
+				end
+				
+				if (addedto[condname] == nil) then
+					table.insert(condfeatureindex[condname], rule)
+					addedto[condname] = 1
+				end
+				
+				if (cond[2] ~= nil) then
+					if (#cond[2] > 0) then
+						local alreadyused = {}
+						local newconds = {}
+						local allfound = false
+						
+						--alreadyused[target] = 1
+						
+						for a,b in ipairs(cond[2]) do
+							if (b ~= "all") and (b ~= "not all") then
+								alreadyused[b] = 1
+								table.insert(newconds, b)
+							elseif (b == "all") then
+								allfound = true
+							elseif (b == "not all") then
+								newconds = {"empty","text"}
+							end
+							
+							if (b == "group") or (b == "not group") then
+								groupcond = true
+							end
+						end
+						
+						if allfound then
+							for a,mat in pairs(objectlist) do
+								if (alreadyused[a] == nil) and (a ~= "group") and (a ~= "all") and (a ~= "text") and (string.sub(a, 1, 5) ~= "text_") then
+									table.insert(newconds, a)
+									alreadyused[a] = 1
+								end
+							end
+						end
+						
+						cond[2] = newconds
+					end
+				end
+			end
+		end
+		
+		if groupcond then
+			table.insert(groupfeatures, rule)
+		end
+
+		local targetnot = string.sub(target, 1, 4)
+		local targetnot_ = string.sub(target, 5)
+		
+		if (targetnot == "not ") and (objectlist[targetnot_] ~= nil) and (targetnot_ ~= "group") and (effect ~= "group") and (effect ~= "not group") then
+			if (targetnot_ ~= "all") then
+				for i,mat in pairs(objectlist) do
+					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= targetnot_) and (i ~= "text") and (string.sub(i, 1, 5) ~= "text_") and  then
+						local rule = {i,verb,effect}
+						local newconds = {}
+						for a,b in ipairs(conds) do
+							table.insert(newconds, b)
+						end
+						addoption(rule,newconds,ids,false,{effect,#featureindex[effect]},tags)
+					end
+				end
+			else
+				local mats = {"empty","text"}
+				
+				for m,i in pairs(mats) do
+					local rule = {i,verb,effect}
+					local newconds = {}
+					for a,b in ipairs(conds) do
+						table.insert(newconds, b)
+					end
+					addoption(rule,newconds,ids,false,{effect,#featureindex[effect]},tags)
+				end
+			end
+		end
+	end
+end
