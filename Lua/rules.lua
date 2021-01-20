@@ -1233,7 +1233,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 		if (targetnot == "not ") and (objectlist[targetnot_] ~= nil) and (targetnot_ ~= "group") and (effect ~= "group") and (effect ~= "not group") then
 			if (targetnot_ ~= "all") then
 				for i,mat in pairs(objectlist) do
-					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= targetnot_) and (i ~= "text") and (string.sub(i, 1, 5) ~= "text_") and  then
+					if (i ~= "empty") and (i ~= "all") and (i ~= "level") and (i ~= "group") and (i ~= targetnot_) and (i ~= "text") and (string.sub(i, 1, 5) ~= "text_") then
 						local rule = {i,verb,effect}
 						local newconds = {}
 						for a,b in ipairs(conds) do
