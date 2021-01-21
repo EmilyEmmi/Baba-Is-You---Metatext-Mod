@@ -154,3 +154,53 @@ function getname(unit,checktext,checktext2)
 
 	return result
 end
+
+function inside(name,x,y,dir_,unitid,leveldata_)
+	local ins = {}
+	local tileid = x + y * roomsizex
+	local maptile = unitmap[tileid] or {}
+	local dir = dir_
+
+	local leveldata = leveldata_ or {}
+
+	if (dir == 4) then
+		dir = fixedrandom(0,3)
+	end
+
+	if (featureindex[name] ~= nil) then
+		for i,rule in ipairs(featureindex[name]) do
+			local baserule = rule[1]
+			local conds = rule[2]
+
+			local target = baserule[1]
+			local verb = baserule[2]
+			local object = baserule[3]
+
+			if (target == name) and (verb == "has") then
+				table.insert(ins, {object,conds})
+			end
+		end
+	end
+
+	if (#ins > 0) then
+		for i,v in ipairs(ins) do
+			local object = v[1]
+			local conds = v[2]
+			if testcond(conds,unitid,x,y) then
+				if (object ~= "text") then
+					for a,mat in pairs(fullunitlist) do
+						if (a == object) and (object ~= "empty") and (object ~= "group") then
+							if (object ~= "all") then
+								create(object,x,y,dir,nil,nil,nil,nil,leveldata)
+							else
+								createall(v,x,y,unitid,nil,leveldata)
+							end
+						end
+					end
+				else
+					create("text_" .. name,x,y,dir,nil,nil,nil,nil,leveldata)
+				end
+			end
+		end
+	end
+end
