@@ -11,4 +11,4 @@ This mod does not include any objects or sprites. You're on your own to get thos
 
 To install, place the Lua folder in your levelpack folder, and write "mods = 1" without quotations inside of world_data.txt (located in the same folder). Alternatively, you can place the Lua folder inside of the game's Data folder and apply it to the whole game.
 
-Note that this may not play nicely with other mods, and this is for version 387.
+Note that this may not play nicely with other mods, and this is for version 388.
