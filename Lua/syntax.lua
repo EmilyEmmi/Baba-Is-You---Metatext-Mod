@@ -1,10 +1,13 @@
-function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,generaldataid,generaldataid2,generaldataid4,generaldataid5,spritedataid,screenw_,screenh_)
+-- All: Implement fullunitlist, a new table that stores the name of every unit in the level.
+function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,generaldataid,generaldataid2,generaldataid3,generaldataid4,generaldataid5,spritedataid,vardataid,screenw_,screenh_)
 	map = TileMap.new(tilemapid)
 	generaldata = mmf.newObject(generaldataid)
 	generaldata2 = mmf.newObject(generaldataid2)
+	generaldata3 = mmf.newObject(generaldataid3)
 	generaldata4 = mmf.newObject(generaldataid4)
 	generaldata5 = mmf.newObject(generaldataid5)
 	spritedata = mmf.newObject(spritedataid)
+	vardata = mmf.newObject(vardataid)
 
 	roomsizex = roomsizex_
 	roomsizey = roomsizey_
@@ -50,11 +53,14 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	customobjects = {}
 	cobjects = {}
 	condstatus = {}
+	emptydata = {}
 	leveldata = {}
 	leveldata.colours = {}
 	leveldata.currcolour = 0
 	undobuffer_editor = {{}}
 	latestleveldetails = {lnum = -1, ltype = -1}
+	edgetiles = {}
+	funnywalls = {}
 
 	generaldata.values[CURRID] = 0
 	updatecode = 1
@@ -76,21 +82,14 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	Fixedseed = 100
 	Seedingtype = 0
 
-	mpath_marray = {}
-	mpath_parray = {}
-	mpath_lines = {}
+	base_octave = 3
 
-	base_octave = 2
-
+	nlist = {}
+	setupnounlists()
 	generatetiles()
 	formatobjlist()
 	generatefreqs()
 end
-
-if (fixed_to_str == nil) then
-	fixed_to_str = tostring
-end
-
 function addunit(id,undoing_)
 	local unitid = #units + 1
 
@@ -134,9 +133,9 @@ function addunit(id,undoing_)
 
 	if (unit.strings[UNITTYPE] ~= "text") or ((unit.strings[UNITTYPE] == "text") and (unit.values[TYPE] == 0)) then
 		objectlist[name_] = 1
+		fullunitlist[name_] = 1
 	end
 	fullunitlist[name] = 1
-	fullunitlist[name_] = 1
 
 	if (unit.strings[UNITTYPE] == "text") then
 		table.insert(codeunits, unit.fixed)
@@ -152,8 +151,11 @@ function addunit(id,undoing_)
 		end
 	end
 
+	unit.colour = {}
+
 	if (unit.strings[UNITNAME] ~= "level") and (unit.className ~= "specialobject") then
-		setcolour(unit.fixed)
+		local cc1,cc2 = setcolour(unit.fixed)
+		unit.colour = {cc1,cc2}
 	end
 
 	local undoing = undoing_ or false
@@ -172,7 +174,6 @@ function addunit(id,undoing_)
 	unit.currcolour = 0
 	unit.followed = -1
 end
-
 function clearunits(restore_)
 	units = {}
 	tiledunits = {}
@@ -204,13 +205,10 @@ function clearunits(restore_)
 	customobjects = {}
 	cobjects = {}
 	condstatus = {}
+	emptydata = {}
 	leveldata = {}
 	leveldata.colours = {}
 	leveldata.currcolour = 0
-
-	mpath_marray = {}
-	mpath_parray = {}
-	mpath_lines = {}
 
 	generaldata.values[CURRID] = 0
 	updateundo = true
@@ -235,28 +233,9 @@ function clearunits(restore_)
 
 		restoredefaults()
 	end
-
-	mmf.resetObjectCache()
 end
 
-function smallclear()
-	objectdata = {}
-	deleted = {}
-	updatelist = {}
-	movelist = {}
-	pushedunits = {}
-	levelconversions = {}
-
-	HACK_MOVES = 0
-	HACK_INFINITY = 0
-	movemap = {}
-
-	if (#units > 2000) then
-		destroylevel("toocomplex")
-		updateundo = true
-	end
-end
-
+-- Fix TEXT IS ALL
 function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 	local all = {}
 	local empty = false
@@ -265,7 +244,7 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 	local leveldata = leveldata_ or {}
 
 	if (x_ == nil) and (y_ == nil) and (id_ == nil) then
-		if (matdata[1] ~= "empty") and (matdata[1] ~= "group") then
+		if (matdata[1] ~= "empty") and (findnoun(matdata[1],nlist.brief) == false) then
 			all = findall(matdata)
 		elseif (matdata[1] == "empty") then
 			all = findempty(matdata[2])
@@ -298,22 +277,24 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 		for i,v in ipairs(test) do
 			if (empty == false) then
 				local vunit = mmf.newObject(v)
-				local x,y,dir = vunit.values[XPOS],vunit.values[YPOS],vunit.values[DIR],vunit.values[MOVED]
+				local x,y,dir = vunit.values[XPOS],vunit.values[YPOS],vunit.values[DIR]
 
-				for b,unit in pairs(objectlist) do
-					if (b ~= "empty") and (b ~= "all") and (b ~= "level") and (b ~= "group") and (b ~= matdata[1]) and (b ~= "text") and (string.sub(b, 1, 5) ~= "text_") then
-						local protect = hasfeature(matdata[1],"is","not " .. b,v,x,y)
+				if (vunit.flags[CONVERTED] == false) then
+					for b,unit in pairs(objectlist) do
+						if (findnoun(b) == false) and (b ~= matdata[1]) then
+							local protect = hasfeature(matdata[1],"is","not " .. b,v,x,y)
 
-						if (protect == nil) then
-							local mat = findtype({b},x,y,v)
-							--local tmat = findtext(x,y)
+							if (protect == nil) then
+								local mat = findtype({b},x,y,v)
+								--local tmat = findtext(x,y)
 
-							if (#mat == 0) then
-								create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+								if (#mat == 0) then
+									create(b,x,y,dir,nil,nil,nil,nil,leveldata)
 
 
-								if (matdata[1] == "text") or (string.sub(matdata[1], 1, 5) == "text_") or (matdata[1] == "level") then
-									table.insert(delthese, v)
+									if (matdata[1] == "text") or (string.sub(matdata[1],1,5) == "text_") or (matdata[1] == "level") then
+										table.insert(delthese, v)
+									end
 								end
 							end
 						end
@@ -326,24 +307,33 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 
 				local blocked = {}
 
-				if (featureindex["empty"] ~= nil) then
-					for i,rules in ipairs(featureindex["empty"]) do
-						local rule = rules[1]
-						local conds = rules[2]
-
-						if (rule[1] == "empty") and (rule[2] == "is") and (string.sub(rule[3], 1, 4) == "not ") then
-							if testcond(conds,1,x,y) then
-								local target = string.sub(rule[3], 5)
-								blocked[target] = 1
-							end
-						end
+				local valid = true
+				if (emptydata[v] ~= nil) then
+					if (emptydata[v]["conv"] ~= nil) and emptydata[v]["conv"] then
+						valid = false
 					end
 				end
 
-				if (blocked["all"] == nil) then
-					for b,mat in pairs(objectlist) do
-						if (b ~= "empty") and (b ~= "all") and (b ~= "level") and (b ~= "group") and (b ~= "text") and (string.sub(b, 1, 5) ~= "text_") and (blocked[target] == nil)  then
-							create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+				if valid then
+					if (featureindex["empty"] ~= nil) then
+						for i,rules in ipairs(featureindex["empty"]) do
+							local rule = rules[1]
+							local conds = rules[2]
+
+							if (rule[1] == "empty") and (rule[2] == "is") and (string.sub(rule[3], 1, 4) == "not ") then
+								if testcond(conds,1,x,y) then
+									local target = string.sub(rule[3], 5)
+									blocked[target] = 1
+								end
+							end
+						end
+					end
+
+					if (blocked["all"] == nil) then
+						for b,mat in pairs(objectlist) do
+							if (findnoun(b) == false) and (blocked[target] == nil)  then
+								create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+							end
 						end
 					end
 				end
@@ -374,7 +364,7 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 
 		if (blocked["all"] == nil) and ((matdata[2] == nil) or testcond(matdata[2],1)) then
 			for b,unit in pairs(objectlist) do
-				if (b ~= "empty") and (b ~= "all") and (b ~= "level") and (b ~= "group") and (blocked[target] == nil) then
+				if (findnoun(b,nlist.brief) == false) and (b ~= "empty") and (b ~= "level") and (blocked[target] == nil) then
 					table.insert(levelconversions, {b, {}})
 				end
 			end

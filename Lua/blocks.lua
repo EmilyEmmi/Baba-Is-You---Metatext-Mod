@@ -1,3 +1,4 @@
+-- Fixes FOLLOW TEXT
 function moveblock()
 	local isshift = findallfeature(nil,"is","shift",true)
 	local istele = findallfeature(nil,"is","tele",true)
@@ -17,9 +18,10 @@ function moveblock()
 						local unitrules = {}
 						local followedfound = false
 
+						--[[ Remove to support metatext
 						if (unit.strings[UNITTYPE] == "text") then
-							--name = "text"
-						end
+							name = "text"
+						end]]--
 
 						if (featureindex[name] ~= nil) then
 							for a,b in ipairs(featureindex[name]) do
@@ -53,6 +55,18 @@ function moveblock()
 
 							for i,v in ipairs(follow) do
 								local these = findall({v})
+								-- Add text units to list of followed units
+								if v == "text" then
+									local texts = {}
+									for i,v in pairs(fullunitlist) do
+										if (string.sub(i, 1, 5) == "text_") then
+											for i,v in pairs(findall({i})) do
+												table.insert(these,v)
+											end
+										end
+									end
+								end
+								-- Add text units to list of followed units
 
 								if (#these > 0) and (stophere == false) then
 									for a,b in ipairs(these) do
@@ -361,7 +375,7 @@ function moveblock()
 					local targetstill = hasfeature(vname,"is","still",v,x,y)
 					-- Luultavasti ei väliä onko kohde tuhoutumassa?
 
-					if (targetstill == nil) and floating(v,unitid) then
+					if (targetstill == nil) and floating(v,unitid,x,y) then
 						local targetname = getname(vunit)
 						if (objectdata[v] == nil) then
 							objectdata[v] = {}
@@ -429,7 +443,7 @@ function moveblock()
 
 			if (#things > 0) and (isgone(unitid) == false) then
 				for e,f in ipairs(things) do
-					if floating(unitid,f) and (issleep(unitid,x,y) == false) then
+					if floating(unitid,f,x,y) and (issleep(unitid,x,y) == false) then
 						local newunit = mmf.newObject(f)
 						local name = newunit.strings[UNITNAME]
 
@@ -446,6 +460,7 @@ function moveblock()
 	doupdate()
 end
 
+-- Removes lines that change name to "text"
 function startblock(light_)
 	local light = light_ or false
 	diceblock()
@@ -498,9 +513,10 @@ function startblock(light_)
 		local unitid = unit.fixed
 		local unitrules = {}
 
+		--[[ Remove to support metatext
 		if (unit.strings[UNITTYPE] == "text") then
-			--name = "text"
-		end
+			name = "text"
+		end]]--
 
 		if (featureindex[name] ~= nil) then
 			for a,b in ipairs(featureindex[name]) do
@@ -553,7 +569,6 @@ function startblock(light_)
 
 	effectblock()
 end
-
 function levelblock()
 	local unlocked = false
 	local things = {}
@@ -582,6 +597,8 @@ function levelblock()
 	local lsafe = issafe(1)
 	local emptybonus = false
 	local emptydone = false
+
+	local levelteledone = 0
 
 	if (#emptythings > 0) then
 		for i=1,roomsizex-2 do
@@ -653,7 +670,7 @@ function levelblock()
 								elseif (defeatpair == "defeat") then
 									defeat = true
 								end
-							elseif ((rule[3] == "you") or (rule[3] == "you2")) and testcond(conds,2,i,j) then
+							elseif ((rule[3] == "you") or (rule[3] == "you2") or (rule[3] == "3d")) and testcond(conds,2,i,j) then
 								candefeat = true
 								canwin = true
 
@@ -670,7 +687,7 @@ function levelblock()
 								elseif (winpair == "win") then
 									victory = true
 								end
-							elseif ((rule[3] == "you") or (rule[3] == "you2")) and testcond(conds,2,i,j) then
+							elseif ((rule[3] == "you") or (rule[3] == "you2") or (rule[3] == "3d")) and testcond(conds,2,i,j) then
 								candefeat = true
 								canwin = true
 
@@ -689,7 +706,7 @@ function levelblock()
 								end
 
 								canbonus = true
-							elseif ((rule[3] == "you") or (rule[3] == "you2")) and testcond(conds,2,i,j) then
+							elseif ((rule[3] == "you") or (rule[3] == "you2") or (rule[3] == "3d")) and testcond(conds,2,i,j) then
 								if (string.len(bonuspair) == 0) then
 									bonuspair = "bonus"
 								elseif (bonuspair == "you") then
@@ -705,7 +722,7 @@ function levelblock()
 								end
 
 								canend = true
-							elseif ((rule[3] == "you") or (rule[3] == "you2")) and testcond(conds,2,i,j) then
+							elseif ((rule[3] == "you") or (rule[3] == "you2") or (rule[3] == "3d")) and testcond(conds,2,i,j) then
 								if (string.len(endpair) == 0) then
 									endpair = "end"
 								elseif (endpair == "you") then
@@ -735,11 +752,11 @@ function levelblock()
 								victory = true
 							end
 
-							if canbonus and ((hasfeature("level","is","you",1,i,j) ~= nil) or (hasfeature("level","is","you2",1,i,j) ~= nil)) and floating_level(2,i,j) then
+							if canbonus and ((hasfeature("level","is","you",1,i,j) ~= nil) or (hasfeature("level","is","you2",1,i,j) ~= nil) or (hasfeature("level","is","3d",1,i,j) ~= nil)) and floating_level(2,i,j) then
 								bonus = true
 							end
 
-							if canend and ((hasfeature("level","is","you",1,i,j) ~= nil) or (hasfeature("level","is","you2",1,i,j) ~= nil)) and floating_level(2,i,j) then
+							if canend and ((hasfeature("level","is","you",1,i,j) ~= nil) or (hasfeature("level","is","you2",1,i,j) ~= nil) or (hasfeature("level","is","3d",1,i,j) ~= nil)) and floating_level(2,i,j) then
 								ending = true
 							end
 						elseif (rule[2] == "eat") and (rule[3] == "level") and (lsafe == false) then
@@ -828,7 +845,8 @@ function levelblock()
 	end
 
 	if emptydone then
-		MF_playsound("doneall_c")
+		local donenum = math.random(1,4)
+		MF_playsound("done" .. tostring(donenum))
 	end
 
 	if (#things > 0) then
@@ -844,7 +862,7 @@ function levelblock()
 
 					local eaten = {}
 
-					if (target ~= "all") and (target ~= "group") and (target ~= "empty") then
+					if (findnoun(target,nlist.brief) == false) and (target ~= "empty") then
 						if (unitlists[target] ~= nil) then
 							if (target == "level") and (#unitlists["level"] > 0) and (lsafe == false) then
 								local pmult,sound = checkeffecthistory("eat")
@@ -890,7 +908,7 @@ function levelblock()
 				elseif (rule[2] == "is") then
 					local action = rule[3]
 
-					if (action == "you") or (action == "you2") then
+					if (action == "you") or (action == "you2") or (action == "3d") then
 						local defeats = findfeature(nil,"is","defeat")
 						local wins = findfeature(nil,"is","win")
 						local ends = findfeature(nil,"is","end")
@@ -987,6 +1005,7 @@ function levelblock()
 					elseif (action == "defeat") then
 						local yous = findfeature(nil,"is","you")
 						local yous2 = findfeature(nil,"is","you2")
+						local yous3 = findfeature(nil,"is","3d")
 
 						if (yous == nil) then
 							yous = {}
@@ -994,6 +1013,12 @@ function levelblock()
 
 						if (yous2 ~= nil) then
 							for i,v in ipairs(yous2) do
+								table.insert(yous, v)
+							end
+						end
+
+						if (yous3 ~= nil) then
+							for i,v in ipairs(yous3) do
 								table.insert(yous, v)
 							end
 						end
@@ -1025,9 +1050,10 @@ function levelblock()
 					elseif (action == "weak") then
 						for i,unit in ipairs(units) do
 							local name = unit.strings[UNITNAME]
+							--[[ Remove to support metatext
 							if (unit.strings[UNITTYPE] == "text") then
-								--name = "text"
-							end
+								name = "text"
+							end]]--
 
 							if floating_level(unit.fixed) and (lsafe == false) then
 								destroylevel()
@@ -1198,9 +1224,10 @@ function levelblock()
 						for a,unit in ipairs(units) do
 							local name = unit.strings[UNITNAME]
 
+							--[[ Remove to support metatext
 							if (unit.strings[UNITTYPE] == "text") then
-								--name = "text"
-							end
+								name = "text"
+							end]]--
 
 							if floating_level(unit.fixed) then
 								if (lsafe == false) then
@@ -1251,6 +1278,7 @@ function levelblock()
 					elseif (action == "bonus") then
 						local yous = findfeature(nil,"is","you")
 						local yous2 = findfeature(nil,"is","you2")
+						local yous3 = findfeature(nil,"is","3d")
 
 						if (yous == nil) then
 							yous = {}
@@ -1258,6 +1286,12 @@ function levelblock()
 
 						if (yous2 ~= nil) then
 							for i,v in ipairs(yous2) do
+								table.insert(yous, v)
+							end
+						end
+
+						if (yous3 ~= nil) then
+							for i,v in ipairs(yous3) do
 								table.insert(yous, v)
 							end
 						end
@@ -1284,13 +1318,14 @@ function levelblock()
 							end
 						end
 
-						if ((#findallfeature("empty","is","you") > 0) or (#findallfeature("empty","is","you2") > 0)) and floating_level(2) and (lsafe == false) then
+						if ((#findallfeature("empty","is","you") > 0) or (#findallfeature("empty","is","you2") > 0) or (#findallfeature("empty","is","3d") > 0)) and floating_level(2) and (lsafe == false) then
 							destroylevel("bonus")
 							return
 						end
 					elseif (action == "win") then
 						local yous = findfeature(nil,"is","you")
 						local yous2 = findfeature(nil,"is","you2")
+						local yous3 = findfeature(nil,"is","3d")
 
 						if (yous == nil) then
 							yous = {}
@@ -1298,6 +1333,12 @@ function levelblock()
 
 						if (yous2 ~= nil) then
 							for i,v in ipairs(yous2) do
+								table.insert(yous, v)
+							end
+						end
+
+						if (yous3 ~= nil) then
+							for i,v in ipairs(yous3) do
 								table.insert(yous, v)
 							end
 						end
@@ -1327,11 +1368,11 @@ function levelblock()
 						end
 
 						local emptyyou = false
-						if ((#findallfeature("empty","is","you") > 0) or (#findallfeature("empty","is","you2") > 0)) and floating_level(2) then
+						if ((#findallfeature("empty","is","you") > 0) or (#findallfeature("empty","is","you2") > 0) or (#findallfeature("empty","is","3d") > 0)) and floating_level(2) then
 							emptyyou = true
 						end
 
-						if (hasfeature("level","is","you",1) ~= nil) or (hasfeature("level","is","you2",1) ~= nil) or emptyyou then
+						if (hasfeature("level","is","you",1) ~= nil) or (hasfeature("level","is","you2",1) ~= nil) or (hasfeature("level","is","3d",1) ~= nil) or emptyyou then
 							canwin = true
 						end
 
@@ -1342,6 +1383,7 @@ function levelblock()
 					elseif (action == "end") then
 						local yous = findfeature(nil,"is","you")
 						local yous2 = findfeature(nil,"is","you2")
+						local yous3 = findfeature(nil,"is","3d")
 
 						if (yous == nil) then
 							yous = {}
@@ -1349,6 +1391,12 @@ function levelblock()
 
 						if (yous2 ~= nil) then
 							for i,v in ipairs(yous2) do
+								table.insert(yous, v)
+							end
+						end
+
+						if (yous3 ~= nil) then
+							for i,v in ipairs(yous3) do
 								table.insert(yous, v)
 							end
 						end
@@ -1378,11 +1426,11 @@ function levelblock()
 						end
 
 						local emptyyou = false
-						if ((#findallfeature("empty","is","you") > 0) or (#findallfeature("empty","is","you2") > 0)) and floating_level(2) then
+						if ((#findallfeature("empty","is","you") > 0) or (#findallfeature("empty","is","you2") > 0) or (#findallfeature("empty","is","3d") > 0)) and floating_level(2) then
 							emptyyou = true
 						end
 
-						if (hasfeature("level","is","you",1) ~= nil) or (hasfeature("level","is","you2",1) ~= nil) or emptyyou then
+						if (hasfeature("level","is","you",1) ~= nil) or (hasfeature("level","is","you2",1) ~= nil) or (hasfeature("level","is","3d",1) ~= nil) or emptyyou then
 							canend = true
 						end
 
@@ -1398,7 +1446,9 @@ function levelblock()
 								break
 							end
 						end
-					elseif (action == "tele") then
+					elseif (action == "tele") and (levelteledone < 3) and (lstill == false) then
+						levelteledone = levelteledone + 1
+
 						for a,unit in ipairs(units) do
 							local x,y = unit.values[XPOS],unit.values[YPOS]
 
@@ -1553,8 +1603,20 @@ function levelblock()
 			local rule = rules[1]
 			local conds = rules[2]
 
-			if (#conds == 0) then
-				if (rule[1] == "all") and (rule[2] == "is") and (rule[3] == "done") then
+			if (rule[1] == "all") and (rule[2] == "is") and (rule[3] == "done") then
+				local targets = findallfeature(nil,"is","done",true)
+				local found = false
+
+				for i,v in ipairs(targets) do
+					local unit = mmf.newObject(v)
+
+					if (unit.className ~= "level") then
+						found = true
+						break
+					end
+				end
+
+				if found then
 					if (generaldata.strings[WORLD] == generaldata.strings[BASEWORLD]) and (editor.values[INEDITOR] == 0) then
 						MF_playsound("doneall_c")
 						MF_allisdone()
@@ -1623,9 +1685,16 @@ function levelblock()
 						else
 							local yous = findallfeature(nil,"is","you",true)
 							local yous2 = findallfeature(nil,"is","you2",true)
+							local yous3 = findallfeature(nil,"is","3d",true)
 
 							if (#yous2 > 0) then
 								for a,b in ipairs(yous2) do
+									table.insert(yous, b)
+								end
+							end
+
+							if (#yous3 > 0) then
+								for a,b in ipairs(yous3) do
 									table.insert(yous, b)
 								end
 							end

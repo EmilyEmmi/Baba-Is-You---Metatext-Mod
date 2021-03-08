@@ -1,3 +1,4 @@
+-- Adds exceptions to every getname call to fix NOT X and TEXT conditions.
 function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken_)
 	local result = true
 
@@ -35,9 +36,10 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 		dir = unit.values[DIR]
 		broken = unit.broken or 0
 
+		--[[ Remove to support metatext
 		if (unit.strings[UNITTYPE] == "text") then
-			--name = "text"
-		end
+			name = "text"
+		end]]--
 	elseif (unitid == 2) then
 		x = x_
 		y = y_
@@ -169,7 +171,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 											for c,d in ipairs(unitmap[tileid]) do
 												if (d ~= unitid) and (alreadyfound[d] == nil) then
 													local unit = mmf.newObject(d)
-													local name_ = getname(unit,pname,isnot)
+													local name_ = getname(unit,pname,pnot)
 
 													if (pnot == false) then
 														if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -334,7 +336,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 										for c,d in ipairs(unitmap[tileid]) do
 											if (d ~= unitid) and (alreadyfound[d] == nil) then
 												local unit = mmf.newObject(d)
-												local name_ = getname(unit,pname,isnot)
+												local name_ = getname(unit,pname,pnot)
 
 												if (pnot == false) then
 													if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -492,7 +494,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 											for c,d in ipairs(unitmap[tileid]) do
 												if (d ~= unitid) and (alreadyfound[d] == nil) then
 													local unit = mmf.newObject(d)
-													local name_ = getname(unit,pname,isnot)
+													local name_ = getname(unit,pname,pnot)
 
 													if (pnot == false) then
 														if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -625,7 +627,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 												for c,d in ipairs(unitmap[tileid]) do
 													if (d ~= unitid) and (alreadyfound[d] == nil) then
 														local unit = mmf.newObject(d)
-														local name_ = getname(unit,pname,isnot)
+														local name_ = getname(unit,pname,pnot)
 
 														if (pnot == false) then
 															if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -758,7 +760,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,isnot)
+															local name_ = getname(unit,pname,pnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -942,7 +944,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,isnot)
+															local name_ = getname(unit,pname,pnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
@@ -1355,7 +1357,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,isnot)
+															local name_ = getname(unit,pname,pnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -1529,7 +1531,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,isnot)
+															local name_ = getname(unit,pname,pnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
@@ -1700,7 +1702,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,isnot)
+															local name_ = getname(unit,pname,pnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (alreadyfound[bcode] == nil) then
@@ -1874,7 +1876,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 													for c,d in ipairs(unitmap[tileid]) do
 														if (d ~= unitid) and (alreadyfound[d] == nil) then
 															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,isnot)
+															local name_ = getname(unit,pname,pnot)
 
 															if (pnot == false) then
 																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then

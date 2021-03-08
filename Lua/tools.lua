@@ -1,15 +1,17 @@
+-- Both: Remove lines that change name to "text"
 function issolid(unitid)
 	local unit = mmf.newObject(unitid)
 	local name = unit.strings[UNITNAME]
 
+	--[[ Remove to support metatext
 	if (unit.strings[UNITTYPE] == "text") then
-		--name = "text""
-	end
+		name = "text"
+	end]]--
 
 	local ispush = hasfeature(name,"is","push",unitid)
 	local ispull = hasfeature(name,"is","pull",unitid)
 	local ismove = hasfeature(name,"is","move",unitid)
-	local isyou = hasfeature(name,"is","you",unitid) or hasfeature(name,"is","you2",unitid)
+	local isyou = hasfeature(name,"is","you",unitid) or hasfeature(name,"is","you2",unitid) or hasfeature(name,"is","3d",unitid)
 
 	if (ispush ~= nil) or (ispull ~= nil) or (ismove ~= nil) or (isyou ~= nil) then
 		return true
@@ -17,17 +19,17 @@ function issolid(unitid)
 
 	return false
 end
-
 function isgone(unitid)
 	if (issafe(unitid) == false) then
 		local unit = mmf.newObject(unitid)
 		local x,y,name = unit.values[XPOS],unit.values[YPOS],unit.strings[UNITNAME]
 
+		--[[ Remove to support metatext
 		if (unit.strings[UNITTYPE] == "text") then
-			--name = "text""
-		end
+			name = "text"
+		end]]--
 
-		local isyou = hasfeature(name,"is","you",unitid,x,y) or hasfeature(name,"is","you2",unitid,x,y)
+		local isyou = hasfeature(name,"is","you",unitid,x,y) or hasfeature(name,"is","you2",unitid,x,y) or hasfeature(name,"is","3d",unitid,x,y)
 		local ismelt = hasfeature(name,"is","melt",unitid,x,y)
 		local isweak = hasfeature(name,"is","weak",unitid,x,y)
 		local isshut = hasfeature(name,"is","shut",unitid,x,y)
@@ -49,7 +51,7 @@ function isgone(unitid)
 
 		if (issink ~= nil) then
 			for i,v in ipairs(issink) do
-				if (v ~= unitid) and (floating(v,unitid)) then
+				if (v ~= unitid) and floating(v,unitid,x,y) then
 					return true
 				end
 			end
@@ -60,7 +62,7 @@ function isgone(unitid)
 
 			if (isdefeat ~= nil) then
 				for i,v in ipairs(isdefeat) do
-					if (floating(v,unitid)) then
+					if floating(v,unitid,x,y) then
 						return true
 					end
 				end
@@ -72,7 +74,7 @@ function isgone(unitid)
 
 			if (ishot ~= nil) then
 				for i,v in ipairs(ishot) do
-					if (floating(v,unitid)) then
+					if floating(v,unitid,x,y) then
 						return true
 					end
 				end
@@ -84,7 +86,7 @@ function isgone(unitid)
 
 			if (isopen_ ~= nil) then
 				for i,v in ipairs(isopen_) do
-					if (floating(v,unitid)) then
+					if floating(v,unitid,x,y) then
 						return true
 					end
 				end
@@ -96,7 +98,7 @@ function isgone(unitid)
 
 			if (isshut_ ~= nil) then
 				for i,v in ipairs(isshut_) do
-					if (floating(v,unitid)) then
+					if floating(v,unitid,x,y) then
 						return true
 					end
 				end
@@ -108,7 +110,7 @@ function isgone(unitid)
 
 			if (things ~= nil) then
 				for i,v in ipairs(things) do
-					if (v ~= unitid) and (floating(v,unitid)) then
+					if (v ~= unitid) and floating(v,unitid,x,y) then
 						return true
 					end
 				end
@@ -119,6 +121,7 @@ function isgone(unitid)
 	return false
 end
 
+-- Fix MIMIC
 function getmat(m,checkallunit)
 	local found = false
 	if checkallunit then
@@ -142,6 +145,7 @@ function getmat(m,checkallunit)
 	end
 end
 
+-- Prevent text from being called "text"
 function getname(unit,checktext,checktext2)
 	local result = unit.strings[UNITNAME]
 
@@ -155,6 +159,7 @@ function getname(unit,checktext,checktext2)
 	return result
 end
 
+-- Fix TEXT HAS TEXT
 function inside(name,x,y,dir_,unitid,leveldata_)
 	local ins = {}
 	local tileid = x + y * roomsizex
