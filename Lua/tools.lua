@@ -193,12 +193,18 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 			local conds = v[2]
 			if testcond(conds,unitid,x,y) then
 				if (object ~= "text") then
-					for a,mat in pairs(fullunitlist) do
-						if (a == object) and (object ~= "empty") and (object ~= "group") then
-							if (object ~= "all") then
+					for a,mat in pairs(fullunitlist) do --ONLY CHANGED LINE
+						if (a == object) and (object ~= "empty") then
+							if (object ~= "all") and (string.sub(object, 1, 5) ~= "group") then
 								create(object,x,y,dir,nil,nil,nil,nil,leveldata)
-							else
+							elseif (object == "all") then
 								createall(v,x,y,unitid,nil,leveldata)
+							elseif (string.sub(object, 1, 5) == "group") then
+								local mem = findgroup(object)
+
+								for c,d in ipairs(mem) do
+									create(d,x,y,dir,nil,nil,nil,nil,leveldata)
+								end
 							end
 						end
 					end
@@ -208,4 +214,17 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 			end
 		end
 	end
+end
+
+-- Makes sure text units are considered special nouns
+function findnoun(noun,list_)
+	local list = list_ or nlist.full
+
+	for i,v in ipairs(list) do
+		if (v == noun) or ((v == "group") and (string.sub(noun, 1, 5) == "group")) or (string.sub(noun,1,5) == "text_" and v == "text") then
+			return true
+		end
+	end
+
+	return false
 end

@@ -301,16 +301,3 @@ function addtextrules()
 		end
 	end
 end
-
--- Makes sure text units are considered special nouns
-function findnoun(noun,list_)
-	local list = list_ or nlist.full
-
-	for i,v in ipairs(list) do
-		if (v == noun) or (string.sub(noun,1,5) == "text_" and v == "text") then
-			return true
-		end
-	end
-
-	return false
-end

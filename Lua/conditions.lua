@@ -1,5 +1,5 @@
 -- Adds exceptions to every getname call to fix NOT X and TEXT conditions.
-function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken_)
+function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken_,subgroup_)
 	local result = true
 
 	local orhandling = false
@@ -19,6 +19,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 	local checkedconds = {}
 	local ignorebroken = ignorebroken_ or false
+	local subgroup = subgroup_ or {}
 
 	if (checkedconds_ ~= nil) then
 		for i,v in pairs(checkedconds_) do
@@ -126,11 +127,72 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 				end
 
 				if (params_ ~= nil) then
+					local handlegroup = false
+
 					for a,b in ipairs(params_) do
 						if (string.sub(b, 1, 4) == "not ") then
 							table.insert(params, b)
 						else
 							table.insert(params, 1, b)
+						end
+
+						if (string.sub(b, 1, 5) == "group") or (string.sub(b, 1, 9) == "not group") then
+							handlegroup = true
+						end
+					end
+
+					local removegroup = {}
+					local removegroupoffset = 0
+
+					if handlegroup then
+						local plimit = #params
+
+						for a=1,plimit do
+							local b = params[a]
+							local mem = subgroup or {}
+							local notnoun = false
+
+							if (string.sub(b, 1, 5) == "group") then
+								if (#mem == 0) then
+									mem = findgroup(b,false,limit)
+								end
+								table.insert(removegroup, a)
+							elseif (string.sub(b, 1, 9) == "not group") then
+								notnoun = true
+
+								if (#mem == 0) then
+									mem = findgroup(string.sub(b, 5),true,limit)
+								else
+									local memfound = {}
+
+									for c,d in ipairs(mem) do
+										memfound[d] = 1
+									end
+
+									mem = {}
+
+									for c,mat in pairs(objectlist) do
+										if (memfound[c] == nil) and (findnoun(c,nlist.short) == false) then
+											table.insert(mem, c)
+										end
+									end
+								end
+								table.insert(removegroup, a)
+							end
+
+							for c,d in ipairs(mem) do
+								if notnoun then
+									table.insert(params, d)
+								else
+									table.insert(params, 1, d)
+									removegroupoffset = removegroupoffset - 1
+								end
+							end
+						end
+
+						for a,b in ipairs(removegroup) do
+							table.remove(params, b - removegroupoffset)
+							removegroupoffset = removegroupoffset + 1
 						end
 					end
 				end
@@ -160,7 +222,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 								local bcode = b .. "_" .. tostring(a)
 
-								if (pname == "group") then
+								if (string.sub(pname, 1, 5) == "group") then
 									result = false
 									break
 								end
@@ -325,7 +387,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -482,7 +544,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -614,7 +676,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -745,7 +807,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -929,7 +991,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -1127,7 +1189,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -1245,7 +1307,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -1340,7 +1402,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -1514,7 +1576,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -1685,7 +1747,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end
@@ -1859,7 +1921,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							local bcode = b .. "_" .. tostring(a)
 
-							if (pname == "group") then
+							if (string.sub(pname, 1, 5) == "group") then
 								result = false
 								break
 							end

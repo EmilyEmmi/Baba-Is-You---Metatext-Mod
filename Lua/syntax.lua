@@ -39,7 +39,6 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	updatelist = {}
 	objectcolours = {}
 	wordunits = {}
-	groupunits = {}
 	wordrelatedunits = {}
 	letterunits = {}
 	letterunits_map = {}
@@ -49,6 +48,7 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	effecthistory = {}
 	notfeatures = {}
 	groupfeatures = {}
+	groupmembers = {}
 	pushedunits = {}
 	customobjects = {}
 	cobjects = {}
@@ -190,7 +190,6 @@ function clearunits(restore_)
 	updatelist = {}
 	objectcolours = {}
 	wordunits = {}
-	groupunits = {}
 	wordrelatedunits = {}
 	letterunits = {}
 	letterunits_map = {}
@@ -201,6 +200,7 @@ function clearunits(restore_)
 	effecthistory = {}
 	notfeatures = {}
 	groupfeatures = {}
+	groupmembers = {}
 	pushedunits = {}
 	customobjects = {}
 	cobjects = {}
@@ -292,7 +292,7 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 									create(b,x,y,dir,nil,nil,nil,nil,leveldata)
 
 
-									if (matdata[1] == "text") or (string.sub(matdata[1],1,5) == "text_") or (matdata[1] == "level") then
+									if (matdata[1] == "text") or (string.sub(matdata[1],1,5) == "text_") or (matdata[1] == "level") then --THE LEGENDARY CHANGED LINE
 										table.insert(delthese, v)
 									end
 								end
