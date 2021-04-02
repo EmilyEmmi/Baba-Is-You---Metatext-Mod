@@ -27,6 +27,10 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 		end
 	end
 
+	if (#features == 0) then
+		return false
+	end
+
 	-- 0 = bug, 1 = level, 2 = empty
 
 	if (unitid ~= 0) and (unitid ~= 1) and (unitid ~= 2) and (unitid ~= nil) then
@@ -37,10 +41,9 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 		dir = unit.values[DIR]
 		broken = unit.broken or 0
 
-		--[[ Remove to support metatext
 		if (unit.strings[UNITTYPE] == "text") then
-			name = "text"
-		end]]--
+			--name = "text"
+		end
 	elseif (unitid == 2) then
 		x = x_
 		y = y_
@@ -149,19 +152,19 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 						for a=1,plimit do
 							local b = params[a]
-							local mem = subgroup or {}
+							local mem = subgroup_
 							local notnoun = false
 
 							if (string.sub(b, 1, 5) == "group") then
-								if (#mem == 0) then
-									mem = findgroup(b,false,limit)
+								if (mem == nil) then
+									mem = findgroup(b,false,limit,checkedconds)
 								end
 								table.insert(removegroup, a)
 							elseif (string.sub(b, 1, 9) == "not group") then
 								notnoun = true
 
-								if (#mem == 0) then
-									mem = findgroup(string.sub(b, 5),true,limit)
+								if (mem == nil) then
+									mem = findgroup(string.sub(b, 5),true,limit,checkedconds)
 								else
 									local memfound = {}
 
@@ -180,13 +183,20 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 								table.insert(removegroup, a)
 							end
 
-							for c,d in ipairs(mem) do
-								if notnoun then
-									table.insert(params, d)
-								else
-									table.insert(params, 1, d)
-									removegroupoffset = removegroupoffset - 1
+							if (mem ~= nil) then
+								for c,d in ipairs(mem) do
+									if notnoun then
+										table.insert(params, d)
+									else
+										table.insert(params, 1, d)
+										removegroupoffset = removegroupoffset - 1
+									end
 								end
+							end
+
+							if (mem == nil) or (#mem == 0) then
+								table.insert(params, "_NONE_")
+								break
 							end
 						end
 

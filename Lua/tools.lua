@@ -121,7 +121,7 @@ function isgone(unitid)
 	return false
 end
 
--- Fix MIMIC
+-- Fix TEXT MIMIC X.
 function getmat(m,checkallunit)
 	local found = false
 	if checkallunit then
@@ -193,7 +193,7 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 			local conds = v[2]
 			if testcond(conds,unitid,x,y) then
 				if (object ~= "text") then
-					for a,mat in pairs(fullunitlist) do --ONLY CHANGED LINE
+					for a,mat in pairs(fullunitlist) do -- ONLY CHANGED LINE
 						if (a == object) and (object ~= "empty") then
 							if (object ~= "all") and (string.sub(object, 1, 5) ~= "group") then
 								create(object,x,y,dir,nil,nil,nil,nil,leveldata)
@@ -217,11 +217,11 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 end
 
 -- Makes sure text units are considered special nouns
-function findnoun(noun,list_)
+function findnoun(noun,list_,ignoretext)
 	local list = list_ or nlist.full
 
 	for i,v in ipairs(list) do
-		if (v == noun) or ((v == "group") and (string.sub(noun, 1, 5) == "group")) or (string.sub(noun,1,5) == "text_" and v == "text") then
+		if (v == noun) or ((v == "group") and (string.sub(noun, 1, 5) == "group")) or (string.sub(noun,1,5) == "text_" and v == "text" and ignoretext ~= true) then
 			return true
 		end
 	end
