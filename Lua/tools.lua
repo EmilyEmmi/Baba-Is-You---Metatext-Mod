@@ -1,4 +1,4 @@
--- Both: Remove lines that change name to "text"
+-- All: Remove lines that change name to "text"
 function issolid(unitid)
 	local unit = mmf.newObject(unitid)
 	local name = unit.strings[UNITNAME]
@@ -120,6 +120,33 @@ function isgone(unitid)
 
 	return false
 end
+function findtype(typedata,x,y,unitid_)
+	local result = {}
+	local unitid = 0
+	local tileid = x + y * roomsizex
+	local name = typedata[1]
+	local conds = typedata[2]
+
+	if (unitid_ ~= nil) then
+		unitid = unitid_
+	end
+
+	if (unitmap[tileid] ~= nil) then
+		for i,v in ipairs(unitmap[tileid]) do
+			if (v ~= unitid) then
+				local unit = mmf.newObject(v)
+
+				if (unit.strings[UNITNAME] == name) then
+					if testcond(conds,v) then
+						table.insert(result, v)
+					end
+				end
+			end
+		end
+	end
+
+	return result
+end
 
 -- Fix TEXT MIMIC X.
 function getmat(m,checkallunit)
@@ -145,21 +172,26 @@ function getmat(m,checkallunit)
 	end
 end
 
--- Prevent text from being called "text"
-function getname(unit,checktext,checktext2)
+-- Prevent text from being called "text", and implement hacky NOT METATEXT in conditions solution.
+function getname(unit,pname_,pnot_)
 	local result = unit.strings[UNITNAME]
+	local pname = pname_ or ""
+	local pnot = pnot_ or ""
 
 	if (unit.strings[UNITTYPE] == "text") and (string.sub(result, 1, 5) ~= "text_") then
 		result = "text_" .. result
 	end
-	if (unit.strings[UNITTYPE] == "text") and ((checktext == "text") or (checktext2 == true)) then
+	if (unit.strings[UNITTYPE] == "text") and ((pname == "text") or (pnot == true)) and (string.sub(pname,1,5) ~= "text_") then
+		result = "text"
+	end
+	if (unit.strings[UNITTYPE] ~= "text") and (string.sub(pname,1,5) == "text_") and (pnot == true) then
 		result = "text"
 	end
 
 	return result
 end
 
--- Fix TEXT HAS TEXT
+--Fixes TEXT HAS TEXT and NOT METATEXT HAS TEXT.
 function inside(name,x,y,dir_,unitid,leveldata_)
 	local ins = {}
 	local tileid = x + y * roomsizex
@@ -192,24 +224,23 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 			local object = v[1]
 			local conds = v[2]
 			if testcond(conds,unitid,x,y) then
-				if (object ~= "text") then
-					for a,mat in pairs(fullunitlist) do -- ONLY CHANGED LINE
-						if (a == object) and (object ~= "empty") then
-							if (object ~= "all") and (string.sub(object, 1, 5) ~= "group") then
-								create(object,x,y,dir,nil,nil,nil,nil,leveldata)
-							elseif (object == "all") then
-								createall(v,x,y,unitid,nil,leveldata)
-							elseif (string.sub(object, 1, 5) == "group") then
-								local mem = findgroup(object)
+				if (object == "text") then
+					object = "text_" .. name
+				end
+				for a,mat in pairs(fullunitlist) do -- ONLY CHANGED LINE
+					if (a == object) and (object ~= "empty") then
+						if (object ~= "all") and (string.sub(object, 1, 5) ~= "group") then
+							create(object,x,y,dir,nil,nil,nil,nil,leveldata)
+						elseif (object == "all") then
+							createall(v,x,y,unitid,nil,leveldata)
+						elseif (string.sub(object, 1, 5) == "group") then
+							local mem = findgroup(object)
 
-								for c,d in ipairs(mem) do
-									create(d,x,y,dir,nil,nil,nil,nil,leveldata)
-								end
+							for c,d in ipairs(mem) do
+								create(d,x,y,dir,nil,nil,nil,nil,leveldata)
 							end
 						end
 					end
-				else
-					create("text_" .. name,x,y,dir,nil,nil,nil,nil,leveldata)
 				end
 			end
 		end

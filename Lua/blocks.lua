@@ -111,7 +111,7 @@ function startblock(light_)
 	effectblock()
 end
 
--- Fixes MAKE, apparently it was broken before :/
+-- You can now make metatext, and metatext can now make text.
 function block(small_)
 	local delthese = {}
 	local doned = {}
@@ -513,13 +513,21 @@ function block(small_)
 				local exists = false
 
 				if (v ~= "text") and (v ~= "all") then
-					for b,mat in pairs(fullunitlist) do --This is the changed part.
+					for b,mat in pairs(fullunitlist) do
 						if (b == v) then
 							exists = true
 						end
 					end
 				else
-					exists = true
+					if (v ~= "text") then
+						exists = true
+					else
+						for b,mat in pairs(fullunitlist) do
+							if (b == "text_" .. name) then
+								exists = true
+							end
+						end
+					end
 				end
 
 				if exists then
@@ -533,7 +541,7 @@ function block(small_)
 								local thing = mmf.newObject(b)
 								local thingname = thing.strings[UNITNAME]
 
-								if (thing.flags[CONVERTED] == false) and ((thingname == v) or ((thing.strings[UNITTYPE] == "text") and (v == "text"))) then
+								if (thing.flags[CONVERTED] == false) and ((thingname == v) or ((thing.strings[UNITTYPE] == "text") and (v == "text") and (unit.strings[UNITTYPE] ~= "text" or thingname == "text_" .. name))) then
 									domake = false
 								end
 							end
@@ -541,7 +549,7 @@ function block(small_)
 					end
 
 					if domake then
-						if (findnoun(v,nlist.short) == false) then
+						if (findnoun(v,nlist.short) == false) or (string.sub(v, 1, 5) == "text_") then
 							create(v,x,y,dir,x,y,nil,nil,leveldata)
 						elseif (v == "text") then
 							if (name ~= "text") and (name ~= "all") then
