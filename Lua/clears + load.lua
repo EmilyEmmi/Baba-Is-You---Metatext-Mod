@@ -13,6 +13,7 @@ function clearunits(restore_)
 	ruleids = {}
 	objectlist = {}
 	fullunitlist = {}
+	objectpalette = {}
 	updatelist = {}
 	objectcolours = {}
 	wordunits = {}
@@ -37,8 +38,9 @@ function clearunits(restore_)
 	leveldata.currcolour = 0
 
 	visiontargets = {}
+	revertlist = {}
 
-	generaldata.values[CURRID] = 0
+	generaldata.values[CURRID] = 1
 	updateundo = true
 	hiddenmap = nil
 	levelconversions = {}
@@ -95,6 +97,7 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	unitlists = {}
 	objectlist = {}
 	fullunitlist = {}
+	objectpalette = {}
 	undobuffer = {}
 	animunits = {}
 	unitmap = {}
@@ -127,13 +130,15 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	edgetiles = {}
 	funnywalls = {}
 	visiontargets = {}
+	revertlist = {}
 
-	generaldata.values[CURRID] = 0
+	generaldata.values[CURRID] = 1
 	updatecode = 1
 	doundo = true
 	updateundo = true
 	ruledebug = false
 	modsinuse = false
+	logevents = true
 	maprotation = 0
 	mapdir = 3
 	last_key = 0
@@ -150,7 +155,15 @@ function init(tilemapid,roomsizex_,roomsizey_,tilesize_,Xoffset_,Yoffset_,genera
 	Fixedseed = 100
 	Seedingtype = 0
 
-	base_octave = 3
+	base_octave = 4
+
+	unitlimit = 2000
+	movelimit = 15000
+	selection_vwidth = 50
+
+	logrulelist = {}
+	logrulelist.old = {}
+	logrulelist.new = {}
 
 	nlist = {}
 	setupnounlists()

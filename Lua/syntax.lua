@@ -55,7 +55,7 @@ function addunit(id,undoing_)
 			if (unitlists[matname] == nil) then
 				unitlists[matname] = {}
 			end
-		elseif (unit.values[TYPE] == 5) then
+		elseif (unit.values[TYPE] == 5 or (unit.values[TYPE] == 4 and unit.strings[UNITNAME] == "text_text_")) then
 			table.insert(letterunits, unit.fixed)
 		end
 	end
