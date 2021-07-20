@@ -7,12 +7,12 @@ editor_objlist["text_text_"] = {
   sprite_in_root = false,
   sprite = "text_textpre",
   unittype = "text",
-	tags = {"text_special","abstract"},
-	tiling = -1,
-	type = 0,
-	layer = 20,
-	colour = {4, 0},
-	colour_active = {4, 1},
+  tags = {"text_special","abstract"},
+  tiling = -1,
+  type = 4,
+  layer = 20,
+  colour = {4, 0},
+  colour_active = {4, 1},
 }
 formatobjlist()
 
