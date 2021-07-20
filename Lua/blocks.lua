@@ -593,18 +593,6 @@ function block(small_)
 				end
 			end
 		end
-
-		for i,unit in ipairs(doned) do
-			addundo({"done",unit.strings[UNITNAME],unit.values[XPOS],unit.values[YPOS],unit.values[DIR],unit.values[ID],unit.fixed,unit.values[FLOAT]})
-			updateundo = true
-
-			unit.values[FLOAT] = 2
-			unit.values[EFFECTCOUNT] = math.random(-10,10)
-			unit.values[POSITIONING] = 7
-			unit.flags[DEAD] = true
-
-			delunit(unit.fixed)
-		end
 	end
 
 	delthese,doremovalsound = handledels(delthese,doremovalsound)

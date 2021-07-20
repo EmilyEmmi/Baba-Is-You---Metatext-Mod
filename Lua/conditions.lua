@@ -651,12 +651,12 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 								if (surrounds[dirid] ~= nil) and (dir ~= 4) then
 									for c,d in ipairs(surrounds[dirid]) do
 										if (pnot == false) then
-											if (d == pname) and (alreadyfound[bcode] == nil) then
+											if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
 												alreadyfound[bcode] = 1
 												allfound = allfound + 1
 											end
 										else
-											if (d ~= pname) and (alreadyfound[bcode] == nil) then
+											if (d ~= pname or not (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
 												alreadyfound[bcode] = 1
 												allfound = allfound + 1
 											end
@@ -793,12 +793,12 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 								if (surrounds[dirid] ~= nil) and (dir ~= 4) then
 									for c,d in ipairs(surrounds[dirid]) do
 										if (pnot == false) then
-											if (d == pname) and (alreadyfound[bcode] == nil) then
+											if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
 												alreadyfound[bcode] = 1
 												allfound = allfound + 1
 											end
 										else
-											if (d ~= pname) and (alreadyfound[bcode] == nil) then
+											if (d ~= pname or not (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
 												alreadyfound[bcode] = 1
 												allfound = allfound + 1
 											end
@@ -1242,7 +1242,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 										elseif (unitlists[b] ~= nil) and (#unitlists[b] > 0) then
 											local found = false
 
-											if (b ~= name) then
+											if (b ~= name) or (b == "text" and string.sub(name,1,5) == "text_") then
 												if (#unitlists[b] < unitcount[b]) then
 													found = true
 												end
@@ -1262,7 +1262,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 									local foundunits = 0
 
 									for c,d in pairs(unitlists) do
-										if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") then
+										if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") and (string.sub(c,1,5) ~= "text_") then
 											for e,f in ipairs(d) do
 												if (f ~= unitid) and (alreadyfound[f] == nil) then
 													alreadyfound[f] = 1
@@ -1373,7 +1373,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 									local found = false
 
 									for c,d in pairs(unitlists) do
-										if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") then
+										if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") and (string.sub(c,1,5) ~= "text_") then
 											for e,f in ipairs(d) do
 												if (f ~= unitid) and (alreadyfound[f] == nil) then
 													alreadyfound[f] = 1

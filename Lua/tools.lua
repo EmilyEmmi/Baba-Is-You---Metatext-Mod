@@ -172,7 +172,7 @@ function getmat(m,checkallunit)
 	end
 end
 
--- Prevent text from being called "text", and implement hacky NOT METATEXT in conditions solution.
+-- Prevent text from being called "text", except in some parameter cases
 function getname(unit,pname_,pnot_)
 	local result = unit.strings[UNITNAME]
 	local pname = pname_ or ""
@@ -258,82 +258,4 @@ function findnoun(noun,list_,ignoretext)
 	end
 
 	return false
-end
-
--- Not actually in tools.lua but whatever. Allows editor to rename objects to metatext.
-function editor_trynamechange(object,newname_,fixed,objlistid,oldname_)
-	local valid = true
-
-	local newname = newname_ or "error"
-	local oldname = oldname_ or "error"
-	local checking = true
-
-	newname = string.gsub(newname, "_", "UNDERDASH")
-	newname = string.gsub(newname, "%W", "")
-	newname = string.gsub(newname, "UNDERDASH", "_")
-
-	--[[while (string.find(newname, "text_text_") ~= nil) do
-		newname = string.gsub(newname, "text_text_", "text_")
-	end]]--
-
-	while checking do
-		checking = false
-
-		for a,obj in pairs(editor_currobjlist) do
-			if (obj.name == newname) then
-				checking = true
-
-				if (tonumber(string.sub(obj.name, -1)) ~= nil) then
-					local num = tonumber(string.sub(obj.name, -1)) + 1
-
-					newname = string.sub(newname, 1, string.len(newname)-1) .. tostring(num)
-				else
-					newname = newname .. "2"
-				end
-			end
-		end
-	end
-
-	if (#newname == 0) or (newname == "level") or (newname == "text_crash") or (newname == "text_error") or (newname == "crash") or (newname == "error") or (newname == "text_never") or (newname == "never") or (newname == "text_") then
-		valid = false
-	end
-
-	if (string.find(newname, "#") ~= nil) then
-		valid = false
-	end
-
-	MF_alert("Trying to change name: " .. object .. ", " .. newname .. ", " .. tostring(valid))
-
-	if valid then
-		savechange(object,{newname},fixed)
-		MF_updateobjlistname_hack(objlistid,newname)
-
-		--[[for i,v in ipairs(editor_currobjlist) do
-			if (v.object == object) then
-				v.name = newname
-			end
-
-			if (v.name == "text_" .. oldname) then
-				v.name = "text_" .. newname
-				local vid = MF_create(v.object)
-				savechange(v.object,{v.name},vid)
-				MF_cleanremove(vid)
-
-				MF_alert("Found text_" .. oldname .. ", changing to text_" .. newname)
-
-				MF_updateobjlistname_byname("text_" .. oldname,"text_" .. newname)
-			elseif (string.sub(oldname, 1, 5) == "text_") and (v.name == string.sub(oldname, 6)) and (string.sub(newname, 1, 5) == "text_") then
-				v.name = string.sub(newname, 6)
-				local vid = MF_create(v.object)
-				savechange(v.object,{v.name},vid)
-				MF_cleanremove(vid)
-
-				MF_alert("Found " .. oldname .. ", changing to " .. newname)
-
-				MF_updateobjlistname_byname(string.sub(oldname, 6),string.sub(newname, 6))
-			end
-		end]]--
-	end
-
-	return valid
 end
