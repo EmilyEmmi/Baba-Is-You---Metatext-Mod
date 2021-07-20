@@ -1,5 +1,21 @@
 -- This is an optional file that adds a new feature. It is not needed for the mod to work.
 
+-- Adds object to editor.
+table.insert(editor_objlist_order,"text_text_")
+editor_objlist["text_text_"] = {
+  name = "text_text_",
+  sprite_in_root = false,
+  sprite = "text_textpre",
+  unittype = "text",
+	tags = {"text_special","abstract"},
+	tiling = -1,
+	type = 0,
+	layer = 20,
+	colour = {4, 0},
+	colour_active = {4, 1},
+}
+formatobjlist()
+
 -- Allows TEXT_ to also act as a letter.
 function formlettermap()
 	letterunits_map = {}
