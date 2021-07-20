@@ -25,4 +25,4 @@ There are multiple ways to get metatext in your level.
 
 **Notes:** 
 - For the TEXT_ prefix to work with letters, the letters need to have their metatext for them in the palette. This isn't required for other text types.
-- This mod changes way too many functions, so it is most likely imcompatible with all other mods, including my own.
+- This mod changes way too many functions, so it is most likely incompatible with all other mods, including my own.
