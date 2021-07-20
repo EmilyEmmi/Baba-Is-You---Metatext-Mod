@@ -19,7 +19,7 @@ The lua file named "text_ prefix" adds the only real new feature as of now. It i
 There are multiple ways to get metatext in your level.
 - Use [this script](https://cdn.discordapp.com/attachments/560913551586492475/854541928611971086/metatext.zip) by Plasmaflare to add most level 1 metatext to the editor. This also comes with sprites! Install with the rest of the mod.
 - Rename an object to "text_text_(name)" without quotations, with (name) being the name of the text you want to refer to. You can go deeper by naming an object "text_text_text_(name)" to refer to "text_text_(name)". **Make sure you set its text type to 0 (Baba)!**
--- There is now a new feature: The TEXT_ prefix, which allows you to refer to metatext without actually having metatext. Make TEXT_ BABA IS YOU to make the BABA text YOU! This can stack, so you can make TEXT_ TEXT_ BABA IS YOU to refer to TEXT_TEXT_BABA if it exists in the object palette. If you added the file that implements it, you can find it in the editor with the other objects. Here's it in action:
+- There is now a new feature: The TEXT_ prefix, which allows you to refer to metatext without actually having metatext. Make TEXT_ BABA IS YOU to make the BABA text YOU! This can stack, so you can make TEXT_ TEXT_ BABA IS YOU to refer to TEXT_TEXT_BABA if it exists in the object palette. If you added the file that implements it, you can find it in the editor with the other objects. Here's it in action:
 
 <img src="gifs/text prefix.gif" alt="gif is not render :(" width="400"/>
 
