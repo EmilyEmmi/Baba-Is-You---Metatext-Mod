@@ -1,5 +1,6 @@
 # Baba Is You - Better Metatext
 **For game version: 424**
+
 A mod that fully implements metatext into Baba Is You on Steam.
 
 Metatext is text that refers to other text. For example, Baba metatext refers to the text that refers to Baba. So it's essentially modifying one kind of text block. Here's a gif of it now that I know how to add those:
