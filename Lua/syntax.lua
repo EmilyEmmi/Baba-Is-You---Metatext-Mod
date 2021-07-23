@@ -40,6 +40,9 @@ function addunit(id,undoing_)
 
 	table.insert(unitlists[name], unit.fixed)
 
+	if fullunitlist == nil then
+		fullunitlist = {}
+	end
 	if (unit.strings[UNITTYPE] ~= "text") or ((unit.strings[UNITTYPE] == "text") and (unit.values[TYPE] == 0)) then
 		objectlist[name_] = 1
 		fullunitlist[name_] = 1
