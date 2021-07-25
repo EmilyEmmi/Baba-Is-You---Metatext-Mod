@@ -327,33 +327,30 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 
 				if (cond[2] ~= nil) then
 					if (#cond[2] > 0) then
-						local alreadyused = {}
 						local newconds = {}
-						local allfound = false
 
 						--alreadyused[target] = 1
 
 						for a,b in ipairs(cond[2]) do
+							local alreadyused = {}
+
 							if (b ~= "all") and (b ~= "not all") then
 								alreadyused[b] = 1
 								table.insert(newconds, b)
 							elseif (b == "all") then
-								allfound = true
+								for a,mat in pairs(objectlist) do
+									if (alreadyused[a] == nil) and (findnoun(a,nlist.short) == false) then
+										table.insert(newconds, a)
+										alreadyused[a] = 1
+									end
+								end
 							elseif (b == "not all") then
-								newconds = {"empty","text"}
+								table.insert(newconds, "empty")
+								table.insert(newconds, "text")
 							end
 
 							if (string.sub(b, 1, 5) == "group") or (string.sub(b, 1, 9) == "not group") then
 								groupcond = true
-							end
-						end
-
-						if allfound then
-							for a,mat in pairs(objectlist) do
-								if (alreadyused[a] == nil) and (findnoun(a,nlist.short) == false) then
-									table.insert(newconds, a)
-									alreadyused[a] = 1
-								end
 							end
 						end
 
@@ -370,7 +367,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 		local targetnot = string.sub(target, 1, 4)
 		local targetnot_ = string.sub(target, 5)
 
-		if (targetnot == "not ") and (objectlist[targetnot_] ~= nil) and (string.sub(targetnot_, 1, 5) ~= "group") and (string.sub(effect, 1, 5) ~= "group") and (string.sub(effect, 1, 9) ~= "not group") then
+		if (targetnot == "not ") and (objectlist[targetnot_] ~= nil) and (string.sub(targetnot_, 1, 5) ~= "group") and (string.sub(effect, 1, 5) ~= "group") and (string.sub(effect, 1, 9) ~= "not group") or (((string.sub(effect, 1, 5) == "group") or (string.sub(effect, 1, 9) == "not group")) and (targetnot_ == "all")) then
 			if (targetnot_ ~= "all") then
 				if (string.sub(targetnot_, 1, 5) == "text_") then
 					for i,mat in pairs(fullunitlist) do
@@ -879,7 +876,7 @@ function grouprules()
 
 		if (string.sub(name_, 1, 4) ~= "not ") then
 			namelist = {name_}
-		else
+		elseif (name_ ~= "not all") then
 			if string.sub(name_, 5, 9) == "text_" then --Exception for NOT METATEXT.
 				for a,b in pairs(fullunitlist) do
 					if (string.sub(a, 1, 5) == "text_") and (a ~= string.sub(name_, 5)) then
