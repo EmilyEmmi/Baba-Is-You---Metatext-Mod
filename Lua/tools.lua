@@ -259,3 +259,158 @@ function findnoun(noun,list_,ignoretext)
 
 	return false
 end
+
+-- Removes text units from "text" unitlist when deleted
+function delunit(unitid)
+	local unit = mmf.newObject(unitid)
+
+	if (unit ~= nil) then
+		local name = getname(unit)
+		local x,y = unit.values[XPOS],unit.values[YPOS]
+		local unitlist = unitlists[name]
+		local unittype = unit.strings[UNITTYPE]
+
+		if (unittype == "text") then
+			updatecode = 1
+		end
+
+		x = math.floor(x)
+		y = math.floor(y)
+
+		if (unitlist ~= nil) then
+			for i,v in pairs(unitlist) do
+				if (v == unitid) then
+					v = {}
+					table.remove(unitlist, i)
+				end
+			end
+		end
+		if (unittype == "text") then
+			local textunitlist = unitlists["text"]
+			if (textunitlist ~= nil) then
+				for i,v in pairs(textunitlist) do
+					if (v == unitid) then
+						v = {}
+						table.remove(textunitlist, i)
+					end
+				end
+			end
+		end
+
+		-- TÄMÄ EI EHKÄ TOIMI
+		local tileid = x + y * roomsizex
+
+		if (unitmap[tileid] ~= nil) then
+			for i,v in pairs(unitmap[tileid]) do
+				if (v == unitid) then
+					v = {}
+					table.remove(unitmap[tileid], i)
+				end
+			end
+
+			if (#unitmap[tileid] == 0) then
+				unitmap[tileid] = nil
+			end
+		end
+
+		if (unittypeshere[tileid] ~= nil) then
+			local uth = unittypeshere[tileid]
+
+			local n = unit.strings[UNITNAME]
+
+			if (uth[n] ~= nil) then
+				uth[n] = uth[n] - 1
+
+				if (uth[n] == 0) then
+					uth[n] = nil
+				end
+			end
+		end
+
+		if (unit.strings[UNITTYPE] == "text") and (codeunits ~= nil) then
+			for i,v in pairs(codeunits) do
+				if (v == unitid) then
+					v = {}
+					table.remove(codeunits, i)
+				end
+			end
+
+			if (unit.values[TYPE] == 5) then
+				for i,v in pairs(letterunits) do
+					if (v == unitid) then
+						v = {}
+						table.remove(letterunits, i)
+					end
+				end
+			end
+		end
+
+		if (unit.values[TILING] > 1) and (animunits ~= nil) then
+			for i,v in pairs(animunits) do
+				if (v == unitid) then
+					v = {}
+					table.remove(animunits, i)
+				end
+			end
+		end
+
+		if (unit.values[TILING] == 1) and (tiledunits ~= nil) then
+			for i,v in pairs(tiledunits) do
+				if (v == unitid) then
+					v = {}
+					table.remove(tiledunits, i)
+				end
+			end
+		end
+
+		if (#wordunits > 0) and (unit.values[TYPE] == 0) and (unit.strings[UNITTYPE] ~= "text") then
+			for i,v in pairs(wordunits) do
+				if (v[1] == unitid) then
+					local currentundo = undobuffer[1]
+					table.insert(currentundo.wordunits, unit.values[ID])
+					updatecode = 1
+					v = {}
+					table.remove(wordunits, i)
+				end
+			end
+		end
+
+		if (#wordrelatedunits > 0) then
+			for i,v in pairs(wordrelatedunits) do
+				if (v[1] == unitid) then
+					local currentundo = undobuffer[1]
+					table.insert(currentundo.wordrelatedunits, unit.values[ID])
+					updatecode = 1
+					v = {}
+					table.remove(wordrelatedunits, i)
+				end
+			end
+		end
+
+		if (#visiontargets > 0) then
+			for i,v in pairs(visiontargets) do
+				if (v == unitid) then
+					local currentundo = undobuffer[1]
+					table.insert(currentundo.visiontargets, unit.values[ID])
+					v = {}
+					table.remove(visiontargets, i)
+				end
+			end
+		end
+	else
+		MF_alert("delunit(): no object found with id " .. tostring(unitid))
+	end
+
+	for i,v in ipairs(units) do
+		if (v.fixed == unitid) then
+			v = {}
+			table.remove(units, i)
+		end
+	end
+
+	for i,data in pairs(updatelist) do
+		if (data[1] == unitid) and (data[2] ~= "convert") then
+			data[2] = "DELETED"
+		end
+	end
+end

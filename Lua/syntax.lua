@@ -1,4 +1,4 @@
--- Implement fullunitlist, a new table that stores the name of every unit in the level.
+-- Implement FULLUNITLIST, and also add text units to "text" unitlist (for WITHOUT)
 function addunit(id,undoing_)
 	local unitid = #units + 1
 
@@ -46,10 +46,12 @@ function addunit(id,undoing_)
 	if (unit.strings[UNITTYPE] ~= "text") or ((unit.strings[UNITTYPE] == "text") and (unit.values[TYPE] == 0)) then
 		objectlist[name_] = 1
 		fullunitlist[name_] = 1
-		if (unitlists["text"] == nil) then
-			unitlists["text"] = {}
+		if unit.strings[UNITTYPE] == "text" then
+			if (unitlists["text"] == nil) then
+				unitlists["text"] = {}
+			end
+			table.insert(unitlists["text"], unit.fixed)
 		end
-		table.insert(unitlists["text"], unit.fixed)
 	end
 	fullunitlist[name] = 1
 
