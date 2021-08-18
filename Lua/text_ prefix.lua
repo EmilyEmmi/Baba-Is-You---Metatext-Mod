@@ -1,4 +1,4 @@
--- This is an optional file that adds a new feature. It is not needed for the mod to work.
+-- This is an optional file that adds a new object. It is not needed for the mod to work.
 
 -- Adds object to editor.
 table.insert(editor_objlist_order,"text_text_")

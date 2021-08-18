@@ -230,7 +230,7 @@ end
 
 --[[
 Makes text rules apply to all text.
-Also makes NOT METATEXT act as all text except the subject.
+Also makes NOT METATEXT act as all text except the subject, and fixes quirks if enabled.
 ]]--
 function addoption(option,conds_,ids,visible,notrule,tags_)
 	--MF_alert(option[1] .. ", " .. option[2] .. ", " .. option[3])
@@ -253,10 +253,48 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 
 	if (#option == 3) then
 		local rule = {option,conds,ids,tags}
-		table.insert(features, rule)
+		if not metatext_fixquirks then
+			table.insert(features, rule)
+		end
 		local target = option[1]
 		local verb = option[2]
 		local effect = option[3]
+		local foundtag = false
+		if metatext_fixquirks then
+			for num,tag in pairs(tags) do
+				if tag == "text" then
+					foundtag = true
+					break
+				end
+			end
+		end
+		if foundtag then
+			if effect == "text" then
+				if verb == "is" then
+					effect = target
+				elseif verb == "has" then
+					effect = "text_text"
+				elseif verb == "make" then
+					return
+				end
+			elseif effect == "not text" then
+				if verb == "is" then
+					effect = "not " .. target
+				elseif verb == "has" then
+					effect = "not text_text"
+				elseif verb == "make" then
+					return
+				end
+			elseif string.sub(effect,1,5) == "group" or string.sub(effect,1,9) == "not group" then
+				if verb == "has" or verb == "make" then
+					return
+				end
+			end
+			rule = {{target,verb,effect},conds,ids,tags}
+			table.insert(features, rule)
+		elseif metatext_fixquirks then
+			table.insert(features, rule)
+		end
 
 		if (featureindex[effect] == nil) then
 			featureindex[effect] = {}
@@ -331,12 +369,25 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 
 						--alreadyused[target] = 1
 
+						local placetextcond = nil
 						for a,b in ipairs(cond[2]) do
 							local alreadyused = {}
 
+							--[[ If we check for a text unit first in conditions, then it might
+							see the metatext and not use it again.
+							The dumb solution: put all of the text conditions at the front (I think
+							it checks in reverse order?) so this doesn't ever happen.
+							I hope this doesn't break anything else. ]]--
 							if (b ~= "all") and (b ~= "not all") then
 								alreadyused[b] = 1
-								table.insert(newconds, b)
+								if b == "text" and placetextcond ~= nil then
+									table.insert(newconds, placetextcond, b)
+								else
+									if string.sub(b,1,5) == "text_" and placetextcond == nil then
+										placetextcond = a
+									end
+									table.insert(newconds, b)
+								end
 							elseif (b == "all") then
 								for a,mat in pairs(objectlist) do
 									if (alreadyused[a] == nil) and (findnoun(a,nlist.short) == false) then
@@ -433,12 +484,17 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 						elseif newword2 == "make" then
 							stop = true
 						end
-					end
-					if newword3 == "not text" then
+					elseif newword3 == "not text" then
 						if newword2 == "is" then
 							newword3 = "not " .. newword1
 						elseif newword2 == "has" then
 							newword3 = "not text_text"
+						elseif newword2 == "make" then
+							stop = true
+						end
+					elseif string.sub(newword3,1,5) == "group" or string.sub(newword3,1,9) == "not group" then
+						if newword2 == "has" or newword2 == "make" then
+							stop = true
 						end
 					end
 
@@ -449,7 +505,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 				end
 			end
 		end
-		if effect == "text" and (verb == "eat" or verb == "follow" or verb == "mimic") then
+		if (effect == "text" or effect == "not text") and verb ~= "is" and verb ~= "make" and verb ~= "has" then
 			for a,b in pairs(fullunitlist) do -- fullunitlist contains all units, is new
 				if (string.sub(a, 1, 5) == "text_") then
 					local newconds = {}
@@ -475,32 +531,6 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 				end
 			end
 		end
-		if effect == "not text" and (verb == "eat" or verb == "follow" or verb == "mimic") then
-			for a,b in pairs(fullunitlist) do -- fullunitlist contains all units, is new
-				if (string.sub(a, 1, 5) == "text_") then
-					local newconds = {}
-					local newtags = {}
-					local stop = false
-
-					for c,d in ipairs(conds) do
-						table.insert(newconds, d)
-					end
-
-					for c,d in ipairs(tags) do
-						table.insert(newtags, d)
-					end
-
-					table.insert(newtags, "verbtext")
-
-					local newword1 = target
-					local newword2 = verb
-					local newword3 = "not" .. a
-
-					local newrule = {newword1, newword2, newword3}
-					addoption(newrule,newconds,ids,false,nil,newtags)
-				end
-			end
-		end
 	end
 end
 
@@ -513,8 +543,8 @@ function addbaserule(rule1,rule2,rule3,conds_)
 end
 
 --[[
-Oh god I have to screw with grouprules, this is a terrible idea
 Makes NOT METATEXT act as all text except the subject in group membership.
+Also fixes a ridiculous amount of group bugs.
 --]]
 function grouprules()
 	groupmembers = {}
@@ -694,6 +724,7 @@ function grouprules()
 					local brec = b_[2] or recursion or false
 					local grule = b[1]
 					local gconds = b[2]
+					local gtags = b[4]
 
 					if (grule[3] == gn1) then
 						diffname_used[i] = 1
@@ -702,15 +733,16 @@ function grouprules()
 						newconds = copyconds(newconds,gconds)
 
 						local newrule = {grule[1],"is",gn2}
+						local newtags = concatenate(tags,gtags)
 
 						if (notrule == false) then
-							table.insert(isgroup, {{newrule,newconds,ids,tags}, brec})
+							table.insert(isgroup, {{newrule,newconds,ids,newtags}, brec})
 						else
 							if (isnotgroup[grule[1]] == nil) then
 								isnotgroup[grule[1]] = {}
 							end
 
-							table.insert(isnotgroup[grule[1]], {{newrule,newconds,ids,tags}, brec})
+							table.insert(isnotgroup[grule[1]], {{newrule,newconds,ids,newtags}, brec})
 						end
 					end
 				end
@@ -874,10 +906,10 @@ function grouprules()
 		local name_ = rule[1]
 		local namelist = {}
 
-		if (string.sub(name_, 1, 4) ~= "not ") then
+		if (string.sub(name_, 1, 4) ~= "not ") and (name_ ~= "text" or metatext_fixquirks) then
 			namelist = {name_}
-		elseif (name_ ~= "not all") then
-			if string.sub(name_, 5, 9) == "text_" then --Exception for NOT METATEXT.
+		elseif (name_ ~= "not all") and (name_ ~= "text" or metatext_fixquirks) then
+			if string.sub(name_, 5, 9) == "text_" then --Exception for NOT metatext_
 				for a,b in pairs(fullunitlist) do
 					if (string.sub(a, 1, 5) == "text_") and (a ~= string.sub(name_, 5)) then
 						table.insert(namelist, a)
@@ -925,7 +957,7 @@ function grouprules()
 				fconds = copyconds(fconds,conds)
 				fconds = copyconds(fconds,prevents)
 
-				table.insert(groupmembers, {name,fconds,rule[3],recursion})
+				table.insert(groupmembers, {name,fconds,rule[3],recursion,v[4]})
 
 				if (groupmembers_quick[name .. "_" .. rule[3]] == nil) then
 					groupmembers_quick[name .. "_" .. rule[3]] = {}
@@ -937,7 +969,7 @@ function grouprules()
 					memberships[rule[3]] = {}
 				end
 
-				table.insert(memberships[rule[3]], {name,fconds})
+				table.insert(memberships[rule[3]], {name,fconds,v[4]})
 
 				for a,b_ in ipairs(groupx) do
 					local b = b_[1]
@@ -957,9 +989,9 @@ function grouprules()
 						newconds = copyconds(newconds,conds)
 						newconds = copyconds(newconds,gconds)
 
-						if (#prevents == 0) then
+						if (#prevents == 0) and name_ ~= "text" then
 							table.insert(combined, {newrule,newconds,newids,newtags})
-						else
+						elseif name_ ~= "text" then
 							newconds = copyconds(newconds,prevents)
 							table.insert(combined, {newrule,newconds,newids,newtags})
 						end
@@ -1032,7 +1064,7 @@ function grouprules()
 						local iconds,icrash,inever = invertconds(b[2])
 
 						if (inever == false) then
-							table.insert(team1, {b[1],iconds})
+							table.insert(team1, {b[1],iconds,b[3]})
 						end
 					end
 				end
@@ -1137,7 +1169,20 @@ function grouprules()
 
 			if (memberships[rule[3]] ~= nil) then
 				for a,b in ipairs(memberships[rule[3]]) do
-					table.insert(team2, b)
+					local foundtag = false
+					if metatext_fixquirks and (rule[2] == "has" or rule[2] == "make") and b[1] ~= "text" then
+						for num,tag in ipairs(b[3]) do
+							if tag == "text" then
+								foundtag = true
+								break
+							end
+						end
+					elseif b[1] == "text" and (rule[2] ~= "has" and rule[2] ~= "make") then
+						foundtag = true
+					end
+					if not foundtag then
+						table.insert(team2, b)
+					end
 				end
 			end
 

@@ -91,6 +91,35 @@ function addunit(id,undoing_)
 	unit.colours = {}
 	unit.currcolour = 0
 	unit.followed = -1
+	unit.xpos = unit.values[XPOS]
+	unit.ypos = unit.values[YPOS]
+
+	if (spritedata.values[VISION] == 1) and (undoing == false) then
+		local hasvision = hasfeature(name,"is","3d",id,unit.values[XPOS],unit.values[YPOS])
+		if (hasvision ~= nil) then
+			table.insert(visiontargets, id)
+		elseif (spritedata.values[CAMTARGET] == unit.values[ID]) then
+			visionmode(0,0,nil,{unit.values[XPOS],unit.values[YPOS],unit.values[DIR]})
+		end
+	end
+
+	if (spritedata.values[VISION] == 1) and (spritedata.values[CAMTARGET] ~= unit.values[ID]) then
+		if (unit.values[ZLAYER] <= 15) then
+			if (unit.values[ZLAYER] > 10) then
+				setupvision_wall(unit.fixed)
+			end
+
+			MF_setupvision_single(unit.fixed)
+		end
+	end
+
+	if generaldata.flags[LOGGING] and (generaldata.flags[RESTARTED] == false) then
+		if levelstart then
+			dolog("init_object","event",unit.strings[UNITNAME] .. ":" .. tostring(unit.values[XPOS]) .. ":" .. tostring(unit.values[YPOS]))
+		elseif (undoing == false) then
+			dolog("new_object","event",unit.strings[UNITNAME] .. ":" .. tostring(unit.values[XPOS]) .. ":" .. tostring(unit.values[YPOS]))
+		end
+	end
 end
 
 -- Fix TEXT IS ALL

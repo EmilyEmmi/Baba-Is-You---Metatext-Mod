@@ -233,12 +233,6 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 							create(object,x,y,dir,nil,nil,nil,nil,leveldata)
 						elseif (object == "all") then
 							createall(v,x,y,unitid,nil,leveldata)
-						elseif (string.sub(object, 1, 5) == "group") then
-							local mem = findgroup(object)
-
-							for c,d in ipairs(mem) do
-								create(d,x,y,dir,nil,nil,nil,nil,leveldata)
-							end
 						end
 					end
 				end
@@ -413,4 +407,140 @@ function delunit(unitid)
 			data[2] = "DELETED"
 		end
 	end
+end
+
+-- Adds option to exclude group rules made by "text" noun
+function findgroup(grouptype_,invert_,limit_,checkedconds_,notextnoun_)
+	local result = {}
+	local limit = limit_ or 0
+	local invert = invert_ or false
+	local grouptype = grouptype_ or "group"
+	local nottextnoun = nottextnoun_ or false
+	local found = {}
+	local alreadyused = {}
+
+	limit = limit + 1
+
+	local idstring = ""
+	local currmembers = {}
+	local handlerecursion = false
+
+	for i,v in ipairs(groupmembers) do
+		local name = v[1]
+		local conds = v[2]
+		local gtype = v[3]
+		local recursion = v[4]
+		local tags = v[4]
+		local foundtag = false
+		if nottextnoun then
+			for num,tag in pairs(tags) do
+				if tag == "text" then
+					foundtag = true
+					break
+				end
+			end
+		end
+
+		if (gtype == grouptype) and foundtag == false then
+			if hasconds(v) and (unitlists[name] ~= nil) then
+				if (recursion == false) then
+					for a,b in ipairs(unitlists[name]) do
+						local unit = mmf.newObject(b)
+						local x,y = unit.values[XPOS],unit.values[YPOS]
+
+						if testcond(conds,b,x,y,nil,limit,checkedconds_) then
+							table.insert(result, name)
+							table.insert(currmembers, name)
+							found[name] = 1
+							idstring = idstring .. name
+							break
+						end
+					end
+				else
+					handlerecursion = true
+				end
+			elseif (hasconds(v) == false) then
+				table.insert(result, name)
+				table.insert(currmembers, name)
+				found[name] = 1
+				idstring = idstring .. name
+			end
+		end
+	end
+
+	local reclimit = 0
+	local curridstring = idstring
+
+	while handlerecursion and (reclimit < 10) do
+		local newidstring = idstring
+		local newmembers = {}
+		for i,v in ipairs(result) do
+			table.insert(newmembers, v)
+		end
+
+		for i,v in ipairs(groupmembers) do
+			local name = v[1]
+			local conds = v[2]
+			local gtype = v[3]
+			local recursion = v[4]
+
+			if recursion and (gtype == grouptype) then
+				if hasconds(v) and (unitlists[name] ~= nil) then
+					for a,b in ipairs(unitlists[name]) do
+						local unit = mmf.newObject(b)
+						local x,y = unit.values[XPOS],unit.values[YPOS]
+
+						if testcond(conds,b,x,y,nil,limit,checkedconds_,nil,currmembers) then
+							table.insert(newmembers, name)
+							newidstring = newidstring .. name
+							break
+						end
+					end
+				elseif (hasconds(v) == false) then
+					table.insert(newmembers, name)
+					newidstring = newidstring .. name
+				end
+			end
+		end
+
+		--MF_alert(curridstring .. ", " .. newidstring)
+
+		if (newidstring ~= curridstring) then
+			currmembers = {}
+			for i,v in ipairs(newmembers) do
+				table.insert(currmembers, v)
+			end
+			curridstring = newidstring
+			reclimit = reclimit + 1
+		else
+			for i,v in ipairs(currmembers) do
+				found[v] = 1
+				idstring = idstring .. v
+				table.insert(result, v)
+			end
+
+			handlerecursion = false
+		end
+	end
+
+	if (reclimit >= 10) then
+		HACK_INFINITY = 200
+		destroylevel("infinity")
+		return
+	end
+
+	if invert then
+		local actualresult = {}
+
+		for a,mat in pairs(objectlist) do
+			if (found[a] == nil) and (alreadyused[a] == nil) and (findnoun(a,nlist.short) == false) then
+				table.insert(actualresult, a)
+				alreadyused[a] = 1
+			end
+		end
+
+		return actualresult
+	end
+
+	return result
 end
