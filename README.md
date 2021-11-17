@@ -1,5 +1,5 @@
 # Baba Is You - Better Metatext
-**For game version: 431D**
+**For game version: 433D**
 
 A mod that fully implements metatext into Baba Is You on Steam.
 
@@ -14,17 +14,23 @@ To install, place the Lua and Sprite folders in your levelpack folder, and write
 
 <img src="gifs/howtoinstall.gif" alt="gif is not render :(" width="800"/>
 
-The lua file named "text_ prefix" is the only optional file. It is not required for the rest of the mod to work. **If you choose to leave out this file, the SPRITES folder is not needed.**
+There are two optional files: one named "text_ prefix.lua" and one named "metaunmeta.lua". Neither are required for the rest of the mod to work, although they are recommended. **If you choose to leave out both files, the SPRITES folder is not needed.**
 
-As of now, there is also "defines + misc.lua", which you can use to enable or disable certain features. More info inside.
+You can also enable or disable new features with the file "defines + misc.lua." Features documented [here](exfeatures.md).
 
 There are multiple ways to get metatext in your level.
 - Use [this script](https://cdn.discordapp.com/attachments/560913551586492475/854541928611971086/metatext.zip) by Plasmaflare to add most level 1 metatext to the editor. This also comes with sprites! Install with the rest of the mod.
-- Rename an object to "text_text_(name)" without quotations, with (name) being the name of the text you want to refer to. You can go deeper by naming an object "text_text_text_(name)" to refer to "text_text_(name)". **Make sure you set its text type to 0 (Baba)! Also, in order for the renaming to work, comment out lines 1935 - 1937 in Data\Editor\editor.lua. May have issues.**
-- There is a new feature: The TEXT_ prefix, which allows you to refer to metatext without actually having metatext. Make TEXT_ BABA IS YOU to make the BABA text YOU! This can stack, so you can make TEXT_ TEXT_ BABA IS YOU to refer to TEXT_TEXT_BABA if it exists in the object palette. If you added the file that implements it, you can find it in the editor with the other objects. Here's it in action:
-
-<img src="gifs/text prefix.gif" alt="gif is not render :(" width="400"/>
+- Rename an object to "text_text_(name)" without quotations, with (name) being the name of the text you want to refer to. You can go deeper by naming an object "text_text_text_(name)" to refer to "text_text_(name)". **Make sure you set its text type to 0 (Baba)!**
+- A new feature with this mod: The TEXT_ prefix. More info [here](exfeatures.md).
+- This new version has an option for creating additional metatext on the fly. More info [here](exfeatures.md).
 
 **Notes:**
 - For the TEXT_ prefix to work with letters, the letters need to have their metatext for them in the palette. This isn't required for other text types.
 - This mod changes way too many functions, so it is most likely incompatible with all other mods, including my own.
+
+**CREDITS**
+- RocketRace#0798's ROBOT IS YOU bot for the Meta/Unmeta sprites
+- Hempuli for making Baba Is You
+- PlasmaFlare#5648 for reference on how to make readmes like this one
+- me for everything else
+If I forgot anyone, write who I forgot and send a carrier pigeon to me. Or ping me on Discord, whichever's more convenient.

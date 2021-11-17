@@ -322,6 +322,85 @@ function block(small_)
 
 	delthese,doremovalsound = handledels(delthese,doremovalsound)
 
+	local isboom = getunitswitheffect("boom",false,delthese)
+
+	for id,unit in ipairs(isboom) do
+		local ux,uy = unit.values[XPOS],unit.values[YPOS]
+		local sunk = false
+		local doeffect = true
+
+		if (issafe(unit.fixed) == false) then
+			sunk = true
+		else
+			doremovalsound = true
+		end
+
+		local name = getname(unit)
+		local count = hasfeature_count(name,"is","boom",unit.fixed,ux,uy)
+		local dim = math.min(count - 1, math.max(roomsizex, roomsizey))
+
+		local locs = {}
+		if (dim <= 0) then
+			table.insert(locs, {0,0})
+		else
+			for g=-dim,dim do
+				for h=-dim,dim do
+					table.insert(locs, {g,h})
+				end
+			end
+		end
+
+		for a,b in ipairs(locs) do
+			local g = b[1]
+			local h = b[2]
+			local x = ux + g
+			local y = uy + h
+			local tileid = x + y * roomsizex
+
+			if (unitmap[tileid] ~= nil) and inbounds(x,y,1) then
+				local water = findallhere(x,y)
+
+				if (#water > 0) then
+					for e,f in ipairs(water) do
+						if floating(f,unit.fixed,x,y) then
+							if (f ~= unit.fixed) then
+								local doboom = true
+
+								for c,d in ipairs(delthese) do
+									if (d == f) then
+										doboom = false
+									elseif (d == unit.fixed) then
+										sunk = false
+									end
+								end
+
+								if doboom and (issafe(f) == false) then
+									table.insert(delthese, f)
+									MF_particles("smoke",x,y,4,0,2,1,1)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+
+		if doeffect then
+			generaldata.values[SHAKE] = 6
+			local pmult,sound = checkeffecthistory("boom")
+			removalshort = sound
+			removalsound = 1
+			local c1,c2 = getcolour(unit.fixed)
+			MF_particles("smoke",ux,uy,15 * pmult,c1,c2,1,1)
+		end
+
+		if sunk then
+			table.insert(delthese, unit.fixed)
+		end
+	end
+
+	delthese,doremovalsound = handledels(delthese,doremovalsound)
+
 	local isweak = getunitswitheffect("weak",false,delthese)
 
 	for id,unit in ipairs(isweak) do
@@ -543,7 +622,11 @@ function block(small_)
 					for b,mat in pairs(fullunitlist) do
 						if (b == v) then
 							exists = true
+							break
 						end
+					end
+					if not exists and string.sub(v,1,5) == "text_" then
+						exists = tryautogenerate(nil,v)
 					end
 				else
 					if (v ~= "text") then
@@ -552,7 +635,11 @@ function block(small_)
 						for b,mat in pairs(fullunitlist) do
 							if (b == "text_" .. name) then
 								exists = true
+								break
 							end
+						end
+						if not exists and string.sub(name,1,5) == "text_" then
+							exists = tryautogenerate("text_" .. name,name)
 						end
 					end
 				end
@@ -1196,5 +1283,235 @@ function moveblock(onlystartblock_)
 		end
 
 		doupdate()
+	end
+end
+
+-- :)
+function effectblock()
+	local levelhide = nil
+
+	if (featureindex["level"] ~= nil) then
+		levelhide = hasfeature("level","is","hide",1)
+
+		local isred = hasfeature("level","is","red",1)
+		local isblue = hasfeature("level","is","blue",1)
+		local isgreen = hasfeature("level","is","green",1)
+		local islime = hasfeature("level","is","lime",1)
+		local isyellow = hasfeature("level","is","yellow",1)
+		local ispurple = hasfeature("level","is","purple",1)
+		local ispink = hasfeature("level","is","pink",1)
+		local isrosy = hasfeature("level","is","rosy",1)
+		local isblack = hasfeature("level","is","black",1)
+		local isgrey = hasfeature("level","is","grey",1)
+		local issilver = hasfeature("level","is","silver",1)
+		local iswhite = hasfeature("level","is","white",1)
+		local isbrown = hasfeature("level","is","brown",1)
+		local isorange = hasfeature("level","is","orange",1)
+		local iscyan = hasfeature("level","is","cyan",1)
+
+		local colours = {isred, isorange, isyellow, islime, isgreen, iscyan, isblue, ispurple, ispink, isrosy, isblack, isgrey, issilver, iswhite, isbrown}
+		local ccolours = {{2,2},{2,3},{2,4},{5,3},{5,2},{1,4},{3,2},{3,1},{4,1},{4,2},{0,4},{0,1},{0,2},{0,3},{6,1}}
+
+		leveldata.colours = {}
+		local c1,c2 = -1,-1
+
+		for a=1,#ccolours do
+			if (colours[a] ~= nil) then
+				local c = ccolours[a]
+
+				if (#leveldata.colours == 0) then
+					c1 = c[1]
+					c2 = c[2]
+				end
+
+				table.insert(leveldata.colours, {c[1],c[2]})
+			end
+		end
+
+		if (#leveldata.colours == 1) then
+			if (c1 > -1) and (c2 > -1) then
+				if (c1 == 0) and (c2 == 4) then
+					MF_backcolour(c1, c2)
+				else
+					MF_backcolour_dim(c1, c2)
+				end
+			end
+		elseif (#leveldata.colours == 0) then
+			MF_backcolour(0, 4)
+		end
+	else
+		MF_backcolour(0, 4)
+	end
+
+	local resetcolour = {}
+	local updatecolour = {}
+
+	for i,unit in ipairs(units) do
+		unit.new = false
+
+		if (levelhide == nil) then
+			unit.visible = true
+		else
+			unit.visible = false
+		end
+
+		if (unit.className ~= "level") then
+			local name = getname(unit)
+			local isred = hasfeature(name,"is","red",unit.fixed)
+			local isblue = hasfeature(name,"is","blue",unit.fixed)
+			local islime = hasfeature(name,"is","lime",unit.fixed)
+			local isgreen = hasfeature(name,"is","green",unit.fixed)
+			local isyellow = hasfeature(name,"is","yellow",unit.fixed)
+			local ispurple = hasfeature(name,"is","purple",unit.fixed)
+			local ispink = hasfeature(name,"is","pink",unit.fixed)
+			local isrosy = hasfeature(name,"is","rosy",unit.fixed)
+			local isblack = hasfeature(name,"is","black",unit.fixed)
+			local isgrey = hasfeature(name,"is","grey",unit.fixed)
+			local issilver = hasfeature(name,"is","silver",unit.fixed)
+			local iswhite = hasfeature(name,"is","white",unit.fixed)
+			local isbrown = hasfeature(name,"is","brown",unit.fixed)
+			local isorange = hasfeature(name,"is","orange",unit.fixed)
+			local iscyan = hasfeature(name,"is","cyan",unit.fixed)
+
+			unit.colours = {}
+
+			local colours = {isred, isorange, isyellow, islime, isgreen, iscyan, isblue, ispurple, ispink, isrosy, isblack, isgrey, issilver, iswhite, isbrown}
+			local ccolours = {{2,2},{2,3},{2,4},{5,3},{5,2},{1,4},{3,2},{3,1},{4,1},{4,2},{0,4},{0,1},{0,2},{0,3},{6,1}}
+
+			local c1,c2,ca = -1,-1,-1
+
+			unit.flags[PHANTOM] = false
+			local isphantom = hasfeature(name,"is","phantom",unit.fixed)
+			if (isphantom ~= nil) then
+				unit.flags[PHANTOM] = true
+			end
+
+			for a=1,#ccolours do
+				if (colours[a] ~= nil) then
+					local c = ccolours[a]
+
+					if (#unit.colours == 0) then
+						c1 = c[1]
+						c2 = c[2]
+						ca = a
+					end
+
+					table.insert(unit.colours, c)
+				end
+			end
+
+			if (#unit.colours == 1) then
+				if (c1 > -1) and (c2 > -1) and (ca > 0) then
+					MF_setcolour(unit.fixed,c1,c2)
+					unit.colour = {c1,c2}
+					unit.values[A] = ca
+				end
+			elseif (#unit.colours == 0) then
+				if (unit.values[A] > 0) and (math.floor(unit.values[A]) == unit.values[A]) then
+					if (unit.strings[UNITTYPE] ~= "text") or (unit.active == false) then
+						setcolour(unit.fixed)
+					else
+						setcolour(unit.fixed,"active")
+					end
+					unit.values[A] = 0
+				end
+			else
+				unit.values[A] = ca
+
+				if (unit.strings[UNITTYPE] == "text") then
+					local curr = (unit.currcolour % #unit.colours) + 1
+					local c = unit.colours[curr]
+
+					unit.colour = {c[1],c[2]}
+					MF_setcolour(unit.fixed,c[1],c[2])
+				end
+			end
+		end
+	end
+	if featureindex["love"] ~= nil and metatext_egg then
+		local valid = true
+		if featureindex["not love"] ~= nil then
+			for i,rule in pairs(featureindex["not love"]) do
+				if rule[1][1] == "love" and rule[1][2] == "is" and rule[1][3] == "not love" then
+					valid = false
+					break
+				end
+			end
+		end
+		if valid then
+			for i,rule in pairs(visualfeatures) do
+				if rule[1][1] == "love" and rule[1][2] == "is" and rule[1][3] == "love" and #rule[2] < 1 then
+					local foundtag = false
+					for num,tag in pairs(rule[4]) do
+						if tag == "mimic" then
+							foundtag = true
+							break
+						end
+					end
+					if not foundtag then
+						for a,unitids in ipairs(rule[3]) do
+							for b,unitid in ipairs(unitids) do
+								local unit = mmf.newObject(unitid)
+								if (unit.className ~= "level") then
+									unit.colours = {}
+									local ccolours = {{2,2},{2,3},{2,4},{5,3},{5,2},{1,4},{3,2},{3,1},{4,1}}
+
+									local c1,c2,ca = -1,-1,-1
+
+									for a=1,#ccolours do
+										local c = ccolours[a]
+
+										if (#unit.colours == 0) then
+											c1 = c[1]
+											c2 = c[2]
+											ca = a
+										end
+
+										table.insert(unit.colours, c)
+									end
+
+									if (#unit.colours == 1) then
+										if (c1 > -1) and (c2 > -1) and (ca > 0) then
+											MF_setcolour(unit.fixed,c1,c2)
+											unit.colour = {c1,c2}
+											unit.values[A] = ca
+										end
+									elseif (#unit.colours == 0) then
+										if (unit.values[A] > 0) and (math.floor(unit.values[A]) == unit.values[A]) then
+											if (unit.strings[UNITTYPE] ~= "text") or (unit.active == false) then
+												setcolour(unit.fixed)
+											else
+												setcolour(unit.fixed,"active")
+											end
+											unit.values[A] = 0
+										end
+									else
+										unit.values[A] = ca
+
+										if (unit.strings[UNITTYPE] == "text") then
+											local curr = (unit.currcolour % #unit.colours) + 1
+											local c = unit.colours[curr]
+
+											unit.colour = {c[1],c[2]}
+											MF_setcolour(unit.fixed,c[1],c[2])
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if (levelhide == nil) then
+		local ishide = findallfeature(nil,"is","hide",true)
+
+		for i,unitid in ipairs(ishide) do
+			local unit = mmf.newObject(unitid)
+
+			unit.visible = false
+		end
 	end
 end

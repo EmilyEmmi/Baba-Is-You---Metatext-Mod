@@ -253,7 +253,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 
 	if (#option == 3) then
 		local rule = {option,conds,ids,tags}
-		if not metatext_fixquirks then
+		if not metatext_fixquirks and not metatext_istextnometa and not metatext_hasmaketextnometa then
 			table.insert(features, rule)
 		end
 		local target = option[1]
@@ -268,56 +268,70 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 				end
 			end
 		end
-		if foundtag then
+		if foundtag or metatext_hasmaketextnometa then
 			if effect == "text" then
-				if verb == "is" then
+				if verb == "is" and foundtag then
 					effect = target
 				elseif verb == "has" then
 					effect = "text_text"
 				elseif verb == "make" then
-					return
+					effect = "_NONE_"
 				end
 			elseif effect == "not text" then
-				if verb == "is" then
+				if verb == "is" and foundtag then
 					effect = "not " .. target
 				elseif verb == "has" then
 					effect = "not text_text"
 				elseif verb == "make" then
-					return
+					effect = "_NONE_"
 				end
 			elseif string.sub(effect,1,5) == "group" or string.sub(effect,1,9) == "not group" then
-				if verb == "has" or verb == "make" then
+				if (verb == "has" or verb == "make") and foundtag then
 					return
 				end
 			end
 			rule = {{target,verb,effect},conds,ids,tags}
-			table.insert(features, rule)
-		elseif metatext_fixquirks then
+		end
+		if metatext_istextnometa and (effect == "text" or effect == "not text") and verb == "is" and string.sub(target,1,5) == "text_" then
+			if effect == "text" then
+				effect = target
+			else
+				effect = "not " .. target
+			end
+			rule = {{target,verb,effect},conds,ids,tags}
+		end
+		if metatext_fixquirks or metatext_istextnometa or metatext_hasmaketextnometa then
 			table.insert(features, rule)
 		end
 
-		if (featureindex[effect] == nil) then
+		if (featureindex[effect] == nil) and effect ~= "_NONE_" then
 			featureindex[effect] = {}
 		end
 
-		if (featureindex[target] == nil) then
+		if (featureindex[target] == nil) and effect ~= "_NONE_" then
 			featureindex[target] = {}
 		end
 
-		if (featureindex[verb] == nil) then
+		if (featureindex[verb] == nil) and effect ~= "_NONE_" then
 			featureindex[verb] = {}
 		end
 
-		table.insert(featureindex[effect], rule)
-		table.insert(featureindex[verb], rule)
+		if effect ~= "_NONE_" then
+			table.insert(featureindex[effect], rule)
+			table.insert(featureindex[verb], rule)
+		end
 
-		if (target ~= effect) then
+		if (target ~= effect) and effect ~= "_NONE_" then
 			table.insert(featureindex[target], rule)
 		end
 
 		if visual then
-			local visualrule = copyrule(rule)
+			local originalrule = {option,conds,ids,tags}
+			local visualrule = copyrule(originalrule)
 			table.insert(visualfeatures, visualrule)
+			if effect == "_NONE_" then
+				return
+			end
 		end
 
 		local groupcond = false
@@ -373,21 +387,9 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 						for a,b in ipairs(cond[2]) do
 							local alreadyused = {}
 
-							--[[ If we check for a text unit first in conditions, then it might
-							see the metatext and not use it again.
-							The dumb solution: put all of the text conditions at the front (I think
-							it checks in reverse order?) so this doesn't ever happen.
-							I hope this doesn't break anything else. ]]--
 							if (b ~= "all") and (b ~= "not all") then
 								alreadyused[b] = 1
-								if b == "text" and placetextcond ~= nil then
-									table.insert(newconds, placetextcond, b)
-								else
-									if string.sub(b,1,5) == "text_" and placetextcond == nil then
-										placetextcond = a
-									end
-									table.insert(newconds, b)
-								end
+								table.insert(newconds, b)
 							elseif (b == "all") then
 								for a,mat in pairs(objectlist) do
 									if (alreadyused[a] == nil) and (findnoun(a,nlist.short) == false) then
@@ -539,7 +541,7 @@ function addbaserule(rule1,rule2,rule3,conds_)
 	local conds = conds_ or {}
 	local rule = {rule1,rule2,rule3}
 
-	addoption(rule,conds,{},false,nil,{base})
+	addoption(rule,conds,{},false,nil,{"base"})
 end
 
 --[[
@@ -1327,4 +1329,460 @@ function grouprules()
 	for i,v in ipairs(combined) do
 		addoption(v[1],v[2],v[3],false,nil,v[4])
 	end
+end
+
+-- All: Enables TEXT IS WORD functionality if enabled.
+function code(alreadyrun_)
+	local playrulesound = false
+	local alreadyrun = alreadyrun_ or false
+
+	if (updatecode == 1) then
+		HACK_INFINITY = HACK_INFINITY + 1
+		--MF_alert("code being updated!")
+
+		if generaldata.flags[LOGGING] then
+			logrulelist.new = {}
+		end
+
+		MF_removeblockeffect(0)
+		wordrelatedunits = {}
+
+		do_mod_hook("rule_update",{alreadyrun})
+
+		if (HACK_INFINITY < 200) then
+			if metatext_textisword then
+				addbaserule("text","is","word")
+			end
+			local checkthese = {}
+			local wordidentifier = ""
+			wordunits,wordidentifier,wordrelatedunits = findwordunits()
+
+			if (#wordunits > 0) then
+				for i,v in ipairs(wordunits) do
+					if testcond(v[2],v[1]) then
+						local unit = mmf.newObject(v[1])
+						table.insert(checkthese, v[1])
+					end
+				end
+			end
+
+			features = {}
+			featureindex = {}
+			condfeatureindex = {}
+			visualfeatures = {}
+			notfeatures = {}
+			groupfeatures = {}
+			local firstwords = {}
+			local alreadyused = {}
+
+			do_mod_hook("rule_baserules")
+
+			for i,v in ipairs(baserulelist) do
+				addbaserule(v[1],v[2],v[3],v[4])
+			end
+			if metatext_textisword then
+				addbaserule("text","is","word")
+			end
+
+			formlettermap()
+
+			if (#codeunits > 0) then
+				for i,v in ipairs(codeunits) do
+					if metatext_textisword then
+						setcolour(v)
+					else
+						table.insert(checkthese, v)
+					end
+				end
+			end
+
+			if (#checkthese > 0) or (#letterunits > 0) then
+				for iid,unitid in ipairs(checkthese) do
+					local unit = mmf.newObject(unitid)
+					local x,y = unit.values[XPOS],unit.values[YPOS]
+					local ox,oy,nox,noy = 0,0
+					local tileid = x + y * roomsizex
+
+					setcolour(unit.fixed)
+
+					if (alreadyused[tileid] == nil) and (unit.values[TYPE] ~= 5) and (unit.flags[DEAD] == false) then
+						for i=1,2 do
+							local drs = dirs[i+2]
+							local ndrs = dirs[i]
+							ox = drs[1]
+							oy = drs[2]
+							nox = ndrs[1]
+							noy = ndrs[2]
+
+							--MF_alert("Doing firstwords check for " .. unit.strings[UNITNAME] .. ", dir " .. tostring(i))
+
+							local hm = codecheck(unitid,ox,oy,i)
+							local hm2 = codecheck(unitid,nox,noy,i)
+
+							if (#hm == 0) and (#hm2 > 0) then
+								--MF_alert("Added " .. unit.strings[UNITNAME] .. " to firstwords, dir " .. tostring(i))
+
+								table.insert(firstwords, {{unitid}, i, 1, unit.strings[UNITNAME], unit.values[TYPE], {}})
+
+								if (alreadyused[tileid] == nil) then
+									alreadyused[tileid] = {}
+								end
+
+								alreadyused[tileid][i] = 1
+							end
+						end
+					end
+				end
+
+				--table.insert(checkthese, {unit.strings[UNITNAME], unit.values[TYPE], unit.values[XPOS], unit.values[YPOS], 0, 1, {unitid})
+
+				for a,b in pairs(letterunits_map) do
+					for iid,data in ipairs(b) do
+						local x,y,i = data[3],data[4],data[5]
+						local unitids = data[7]
+						local width = data[6]
+						local word,wtype = data[1],data[2]
+
+						local unitid = unitids[1]
+
+						local tileid = x + y * roomsizex
+
+						if (alreadyused[tileid] == nil) or ((alreadyused[tileid] ~= nil) and (alreadyused[tileid][i] == nil)) then
+							local drs = dirs[i+2]
+							local ndrs = dirs[i]
+							ox = drs[1]
+							oy = drs[2]
+							nox = ndrs[1] * width
+							noy = ndrs[2] * width
+
+							local hm = codecheck(unitid,ox,oy,i)
+							local hm2 = codecheck(unitid,nox,noy,i)
+
+							if (#hm == 0) and (#hm2 > 0) then
+								-- MF_alert(word .. ", " .. tostring(width))
+
+								table.insert(firstwords, {unitids, i, width, word, wtype, {}})
+
+								if (alreadyused[tileid] == nil) then
+									alreadyused[tileid] = {}
+								end
+
+								alreadyused[tileid][i] = 1
+							end
+						end
+					end
+				end
+
+				docode(firstwords,wordunits)
+				subrules()
+				grouprules()
+				playrulesound = postrules(alreadyrun)
+				updatecode = 0
+
+				local newwordunits,newwordidentifier,wordrelatedunits = findwordunits()
+
+				--MF_alert("ID comparison: " .. newwordidentifier .. " - " .. wordidentifier)
+
+				if (newwordidentifier ~= wordidentifier) then
+					updatecode = 1
+					code(true)
+				else
+					--domaprotation()
+				end
+			elseif metatext_textisword then
+				updatecode = 0
+
+				local newwordunits,newwordidentifier,wordrelatedunits = findwordunits()
+
+				--MF_alert("ID comparison: " .. newwordidentifier .. " - " .. wordidentifier)
+
+				if (newwordidentifier ~= wordidentifier) then
+					updatecode = 1
+					code(true)
+				else
+					--domaprotation()
+				end
+			end
+		else
+			MF_alert("Level destroyed - code() run too many times")
+			destroylevel("infinity")
+			return
+		end
+
+		if (alreadyrun == false) then
+			effects_decors()
+
+			if (featureindex["broken"] ~= nil) then
+				brokenblock(checkthese)
+			end
+
+			if (featureindex["3d"] ~= nil) then
+				updatevisiontargets()
+			end
+
+			if generaldata.flags[LOGGING] then
+				updatelogrules()
+			end
+		end
+
+		do_mod_hook("rule_update_after",{alreadyrun})
+	end
+
+	if (alreadyrun == false) then
+		local rulesoundshort = ""
+		alreadyrun = true
+		if playrulesound and (generaldata5.values[LEVEL_DISABLERULEEFFECT] == 0) then
+			local pmult,sound = checkeffecthistory("rule")
+			rulesoundshort = sound
+			local rulename = "rule" .. tostring(math.random(1,5)) .. rulesoundshort
+			MF_playsound(rulename)
+		end
+	end
+end
+function codecheck(unitid,ox,oy,cdir_,ignore_end_)
+	local unit = mmf.newObject(unitid)
+	local ux,uy = unit.values[XPOS],unit.values[YPOS]
+	local x = unit.values[XPOS] + ox
+	local y = unit.values[YPOS] + oy
+	local result = {}
+	local letters = false
+	local justletters = false
+	local cdir = cdir_ or 0
+
+	local ignore_end = false
+	if (ignore_end_ ~= nil) then
+		ignore_end = ignore_end_
+	end
+
+	if (cdir == 0) then
+		MF_alert("CODECHECK - CDIR == 0 - why??")
+	end
+
+	local tileid = x + y * roomsizex
+
+	if (unitmap[tileid] ~= nil) then
+		for i,b in ipairs(unitmap[tileid]) do
+			local v = mmf.newObject(b)
+			local w = 1
+
+			if (v.values[TYPE] ~= 5) and (v.flags[DEAD] == false) then
+				if (v.strings[UNITTYPE] == "text") and not metatext_textisword then
+					table.insert(result, {{b}, w, v.strings[NAME], v.values[TYPE], cdir})
+				else
+					if (#wordunits > 0) then
+						for c,d in ipairs(wordunits) do
+							if (b == d[1]) and testcond(d[2],d[1]) then
+								if metatext_textisword then
+									table.insert(result, {{b}, w, v.strings[NAME], v.values[TYPE], cdir})
+								else
+									table.insert(result, {{b}, w, v.strings[UNITNAME], v.values[TYPE], cdir})
+								end
+							end
+						end
+					end
+				end
+			else
+				justletters = true
+			end
+		end
+	end
+
+	if (letterunits_map[tileid] ~= nil) then
+		for i,v in ipairs(letterunits_map[tileid]) do
+			local unitids = v[7]
+			local width = v[6]
+			local word = v[1]
+			local wtype = v[2]
+			local dir = v[5]
+
+			if (string.len(word) > 5) and (string.sub(word, 1, 5) == "text_") then
+				word = string.sub(v[1], 6)
+			end
+
+			local valid = true
+			if ignore_end and ((x ~= v[3]) or (y ~= v[4])) and (width > 1) then
+				valid = false
+			end
+
+			if (cdir ~= 0) and (width > 1) then
+				if ((cdir == 1) and (ux > v[3]) and (ux < v[3] + width)) or ((cdir == 2) and (uy > v[4]) and (uy < v[4] + width)) then
+					valid = false
+				end
+			end
+
+			--MF_alert(word .. ", " .. tostring(valid) .. ", " .. tostring(dir) .. ", " .. tostring(cdir))
+
+			if (dir == cdir) and valid then
+				table.insert(result, {unitids, width, word, wtype, dir})
+				letters = true
+			end
+		end
+	end
+
+	return result,letters,justletters
+end
+function findwordunits()
+	local result = {}
+	local alreadydone = {}
+	local checkrecursion = {}
+	local related = {}
+
+	local identifier = ""
+	local fullid = {}
+
+	if (featureindex["word"] ~= nil) then
+		for i,v in ipairs(featureindex["word"]) do
+			local rule = v[1]
+			local conds = v[2]
+			local ids = v[3]
+
+			local name = rule[1]
+			local subid = ""
+
+			if (fullunitlist[name] ~= nil) and (metatext_textisword or (name ~= "text" and string.sub(name,1,5) ~= "text_")) and (alreadydone[name] == nil) then
+				local these = findall({name,{}})
+				alreadydone[name] = 1
+
+				if (#these > 0) then
+					for a,b in ipairs(these) do
+						local bunit = mmf.newObject(b)
+						local valid = true
+
+						if (featureindex["broken"] ~= nil) then
+							if (hasfeature(getname(bunit),"is","broken",b,bunit.values[XPOS],bunit.values[YPOS]) ~= nil) then
+								valid = false
+							end
+						end
+
+						if valid then
+							table.insert(result, {b, conds})
+							subid = subid .. name
+							-- LISÄÄ TÄHÄN LISÄÄ DATAA
+						end
+					end
+				end
+			end
+
+			if (#subid > 0) then
+				for a,b in ipairs(conds) do
+					local condtype = b[1]
+					local params = b[2] or {}
+
+					subid = subid .. condtype
+
+					if (#params > 0) then
+						for c,d in ipairs(params) do
+							subid = subid .. tostring(d)
+
+							related = findunits(d,related,conds)
+						end
+					end
+				end
+			end
+
+			table.insert(fullid, subid)
+
+			--MF_alert("Going through " .. name)
+
+			if (#ids > 0) then
+				if (#ids[1] == 1) then
+					local firstunit = mmf.newObject(ids[1][1])
+
+					local notname = name
+					if (string.sub(name, 1, 4) == "not ") then
+						notname = string.sub(name, 5)
+					end
+
+					if (firstunit.strings[UNITNAME] ~= "text_" .. name) and (firstunit.strings[UNITNAME] ~= "text_" .. notname) then
+						--MF_alert("Checking recursion for " .. name)
+						table.insert(checkrecursion, {name, i})
+					end
+				end
+			else
+				MF_alert("No ids listed in Word-related rule! rules.lua line 1302 - this needs fixing asap (related to grouprules line 1118)")
+			end
+		end
+
+		table.sort(fullid)
+		for i,v in ipairs(fullid) do
+			-- MF_alert("Adding " .. v .. " to id")
+			identifier = identifier .. v
+		end
+
+		-- MF_alert("Identifier: " .. identifier)
+
+		for a,checkname_ in ipairs(checkrecursion) do
+			local found = false
+
+			local checkname = checkname_[1]
+
+			local b = checkname
+			if (string.sub(b, 1, 4) == "not ") then
+				b = string.sub(checkname, 5)
+			end
+
+			for i,v in ipairs(featureindex["word"]) do
+				local rule = v[1]
+				local ids = v[3]
+				local tags = v[4]
+
+				if (rule[1] == b) or (rule[1] == "all") or ((rule[1] ~= b) and (string.sub(rule[1], 1, 3) == "not")) then
+					for c,g in ipairs(ids) do
+						for a,d in ipairs(g) do
+							local idunit = mmf.newObject(d)
+
+							-- Tässä pitäisi testata myös Group!
+							if (idunit.strings[UNITNAME] == "text_" .. rule[1]) or (rule[1] == "all") then
+								--MF_alert("Matching objects - found")
+								found = true
+							elseif (string.sub(rule[1], 1, 5) == "group") then
+								--MF_alert("Group - found")
+								found = true
+							elseif (rule[1] ~= checkname) and (string.sub(rule[1], 1, 3) == "not") then
+								--MF_alert("Not Object - found")
+								found = true
+							end
+						end
+					end
+
+					for c,g in ipairs(tags) do
+						if (g == "mimic") then
+							found = true
+						end
+					end
+				end
+			end
+
+			if (found == false) then
+				--MF_alert("Wordunit status for " .. b .. " is unstable!")
+				identifier = "null"
+				wordunits = {}
+
+				for i,v in pairs(featureindex["word"]) do
+					local rule = v[1]
+					local ids = v[3]
+
+					--MF_alert("Checking to disable: " .. rule[1] .. " " .. ", not " .. b)
+
+					if (rule[1] == b) or (rule[1] == "not " .. b) then
+						v[2] = {{"never",{}}}
+					end
+				end
+
+				if (string.sub(checkname, 1, 4) == "not ") then
+					local notrules_word = notfeatures["word"]
+					local notrules_id = checkname_[2]
+					local disablethese = notrules_word[notrules_id]
+
+					for i,v in ipairs(disablethese) do
+						v[2] = {{"never",{}}}
+					end
+				end
+			end
+		end
+	end
+
+	--MF_alert("Current id (end): " .. identifier)
+
+	return result,identifier,related
 end

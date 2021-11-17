@@ -158,78 +158,83 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 		end
 	end
 
-	local delthese = {}
+	if (dolevels == false) then
+		local delthese = {}
 
-	if (#test > 0) then
-		for i,v in ipairs(test) do
-			if (empty == false) then
-				local vunit = mmf.newObject(v)
-				local x,y,dir = vunit.values[XPOS],vunit.values[YPOS],vunit.values[DIR]
+		if (#test > 0) then
+			for i,v in ipairs(test) do
+				if (empty == false) then
+					local vunit = mmf.newObject(v)
+					local x,y,dir = vunit.values[XPOS],vunit.values[YPOS],vunit.values[DIR]
 
-				if (vunit.flags[CONVERTED] == false) then
-					for b,unit in pairs(objectlist) do
-						if (findnoun(b) == false) and (b ~= matdata[1]) then
-							local protect = hasfeature(matdata[1],"is","not " .. b,v,x,y)
+					if (vunit.flags[CONVERTED] == false) then
+						for b,unit in pairs(objectlist) do
+							if (findnoun(b) == false) and (b ~= matdata[1]) then
+								local protect = hasfeature(matdata[1],"is","not " .. b,v,x,y)
 
-							if (protect == nil) then
-								local mat = findtype({b},x,y,v)
-								--local tmat = findtext(x,y)
+								if (protect == nil) then
+									local mat = findtype({b},x,y,v)
+									--local tmat = findtext(x,y)
 
-								if (#mat == 0) then
-									create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+									if (#mat == 0) then
+										local nunitid,ningameid = create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+										local nrevertdata = getrevertorigin(ningameid,vunit.values[ID],matdata[1])
+										addundo({"convert",matdata[1],mat,ningameid,vunit.values[ID],x,y,dir,nrevertdata})
 
-
-									if (matdata[1] == "text") or (string.sub(matdata[1],1,5) == "text_") or (matdata[1] == "level") then --THE LEGENDARY CHANGED LINE
-										table.insert(delthese, v)
+										if (matdata[1] == "text") or (string.sub(matdata[1],1,5) == "text_") or (matdata[1] == "level") then --THE LEGENDARY CHANGED LINE
+											table.insert(delthese, v)
+										end
 									end
 								end
 							end
 						end
 					end
-				end
-			else
-				local x = v % roomsizex
-				local y = math.floor(v / roomsizex)
-				local dir = 4
+				else
+					local x = v % roomsizex
+					local y = math.floor(v / roomsizex)
+					local dir = 4
 
-				local blocked = {}
+					local blocked = {}
 
-				local valid = true
-				if (emptydata[v] ~= nil) then
-					if (emptydata[v]["conv"] ~= nil) and emptydata[v]["conv"] then
-						valid = false
-					end
-				end
-
-				if valid then
-					if (featureindex["empty"] ~= nil) then
-						for i,rules in ipairs(featureindex["empty"]) do
-							local rule = rules[1]
-							local conds = rules[2]
-
-							if (rule[1] == "empty") and (rule[2] == "is") and (string.sub(rule[3], 1, 4) == "not ") then
-								if testcond(conds,1,x,y) then
-									local target = string.sub(rule[3], 5)
-									blocked[target] = 1
-								end
-							end
+					local valid = true
+					if (emptydata[v] ~= nil) then
+						if (emptydata[v]["conv"] ~= nil) and emptydata[v]["conv"] then
+							valid = false
 						end
 					end
 
-					if (blocked["all"] == nil) then
-						for b,mat in pairs(objectlist) do
-							if (findnoun(b) == false) and (blocked[target] == nil)  then
-								create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+					if valid then
+						if (featureindex["empty"] ~= nil) then
+							for i,rules in ipairs(featureindex["empty"]) do
+								local rule = rules[1]
+								local conds = rules[2]
+
+								if (rule[1] == "empty") and (rule[2] == "is") and (string.sub(rule[3], 1, 4) == "not ") then
+									if testcond(conds,1,x,y) then
+										local target = string.sub(rule[3], 5)
+										blocked[target] = 1
+									end
+								end
+							end
+						end
+
+						if (blocked["all"] == nil) then
+							for b,mat in pairs(objectlist) do
+								if (findnoun(b) == false) and (blocked[target] == nil)  then
+									local nunitid,ningameid = create(b,x,y,dir,nil,nil,nil,nil,leveldata)
+									local nrevertdata = getrevertorigin(ningameid,2,matdata[1])
+									addundo({"convert",matdata[1],mat,ningameid,2,x,y,dir,nrevertdata})
+								end
 							end
 						end
 					end
 				end
 			end
 		end
-	end
 
-	for a,b in ipairs(delthese) do
-		delete(b)
+		for a,b in ipairs(delthese) do
+			delete(b)
+		end
 	end
 
 	if (matdata[1] == "level") and dolevels then

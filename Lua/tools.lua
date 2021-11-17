@@ -227,13 +227,22 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 				if (object == "text") then
 					object = "text_" .. name
 				end
+				local did = false
 				for a,mat in pairs(fullunitlist) do -- ONLY CHANGED LINE
 					if (a == object) and (object ~= "empty") then
 						if (object ~= "all") and (string.sub(object, 1, 5) ~= "group") then
 							create(object,x,y,dir,nil,nil,nil,nil,leveldata)
+							did = true
 						elseif (object == "all") then
 							createall(v,x,y,unitid,nil,leveldata)
+							did = true
 						end
+					end
+				end
+				if not did and string.sub(object,1,5) == "text_" then
+					did = tryautogenerate(nil,object)
+					if did then
+						create(object,x,y,dir,nil,nil,nil,nil,leveldata)
 					end
 				end
 			end
