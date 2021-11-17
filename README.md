@@ -33,4 +33,5 @@ There are multiple ways to get metatext in your level.
 - Hempuli for making Baba Is You
 - PlasmaFlare#5648 for reference on how to make readmes like this one
 - me for everything else
-If I forgot anyone, write who I forgot and send a carrier pigeon to me. Or ping me on Discord, whichever's more convenient.
+
+If I forgot anyone else, write who I forgot and send a carrier pigeon to me. Or ping me on Discord, whichever's more convenient.
