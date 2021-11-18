@@ -30,8 +30,9 @@ There are multiple ways to get metatext in your level.
 
 **CREDITS**
 - RocketRace#0798's ROBOT IS YOU bot for the Meta/Unmeta sprites
+- someusername6#5733 for metatext python script used to make sprite in one gif
 - Hempuli for making Baba Is You
-- PlasmaFlare#5648 for reference on how to make readmes like this one
+- PlasmaFlare#5648 for reference on how to make readmes like this one and also for making a script I link to here
 - me for everything else
 
 If I forgot anyone else, write who I forgot and send a carrier pigeon to me. Or ping me on Discord, whichever's more convenient.
