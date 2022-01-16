@@ -68,6 +68,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 	end
 
 	checkedconds[tostring(conds)] = 1
+	checkedconds[tostring(conds) .. "_s_"] = 1
 
 	if (unitid == 0) or (unitid == nil) then
 		print("WARNING!! Unitid is " .. tostring(unitid))
@@ -103,9 +104,12 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 				end
 
 				local isnot = string.sub(condtype, 1, 4)
+				local notcond = false
+				local powercond = false
 
 				if (isnot == "not ") then
 					isnot = string.sub(condtype, 5)
+					notcond = true
 				else
 					isnot = condtype
 				end
@@ -205,6 +209,15 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 							table.remove(params, b - removegroupoffset)
 							removegroupoffset = removegroupoffset + 1
 						end
+					end
+				end
+
+				local powername = ""
+				if (string.sub(isnot, 1, 7) == "powered") then
+					powercond = true
+
+					if (#isnot > 7) then
+						powername = string.sub(isnot, 8)
 					end
 				end
 
@@ -838,7 +851,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					local tileid = (x + ox) + (y + oy) * roomsizex
 					local solid = 0
 
-					if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds)] ~= nil) then
+					if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds) .. "_s_"] ~= nil) then
 						result = false
 						dir = 4
 					end
@@ -999,7 +1012,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					local tileid = (x + ox) + (y + oy) * roomsizex
 					local solid = 0
 
-					if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds)] ~= nil) then
+					if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds) .. "_s_"] ~= nil) then
 						result = false
 						dir = -99
 					end
@@ -3720,18 +3733,20 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					elseif orhandling then
 						orresult = true
 					end
-				elseif (condtype == "powered") then
+				elseif powercond and (notcond == false) then
 					valid = true
 					local found = false
 
-					if (featureindex["power"] ~= nil) then
-						for c,d in ipairs(featureindex["power"]) do
+					local fullname = "power" .. powername
+
+					if (featureindex[fullname] ~= nil) then
+						for c,d in ipairs(featureindex[fullname]) do
 							local drule = d[1]
 							local dconds = d[2]
 
 							if (checkedconds[tostring(dconds)] == nil) then
-								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == "power") then
-									if (drule[1] ~= "empty") and (drule[1] ~= "level") then
+								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == fullname) then
+									if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") then
 										if (unitlists[drule[1]] ~= nil) then
 											checkedconds[tostring(dconds)] = 1
 
@@ -3748,7 +3763,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 										if (#empties > 0) then
 											found = true
 										end
-									elseif (drule[1] == "level") and testcond(dconds,2,x,y,nil,limit,checkedconds) then
+									elseif (drule[1] == "level") and testcond(dconds,1,x,y,nil,limit,checkedconds) then
 										found = true
 									end
 								end
@@ -3770,18 +3785,20 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					elseif orhandling then
 						orresult = true
 					end
-				elseif (condtype == "not powered") then
+				elseif powercond and notcond then
 					valid = true
 					local found = false
 
-					if (featureindex["power"] ~= nil) then
-						for c,d in ipairs(featureindex["power"]) do
+					local fullname = "power" .. powername
+
+					if (featureindex[fullname] ~= nil) then
+						for c,d in ipairs(featureindex[fullname]) do
 							local drule = d[1]
 							local dconds = d[2]
 
 							if (checkedconds[tostring(dconds)] == nil) then
-								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == "power") then
-									if (drule[1] ~= "empty") and (drule[1] ~= "level") then
+								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == fullname) then
+									if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") then
 										if (unitlists[drule[1]] ~= nil) then
 											checkedconds[tostring(dconds)] = 1
 
@@ -3798,7 +3815,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 										if (#empties > 0) then
 											found = true
 										end
-									elseif (drule[1] == "level") and testcond(dconds,2,x,y,nil,limit,checkedconds) then
+									elseif (drule[1] == "level") and testcond(dconds,1,x,y,nil,limit,checkedconds) then
 										found = true
 									end
 								end

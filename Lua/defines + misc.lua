@@ -1,33 +1,44 @@
-metatext_fixquirks = true --[[ Set this to FALSE to:
+-- Use the in-game menu now.
+
+metatext_warning = get_setting("give_warning") --[[Gives error if compatible version does not match current game version. SET TO
+FALSE to disable.]]
+
+table.insert( mod_hook_functions["level_start"], function()
+
+metatext_fixquirks = get_setting("fix_quirks") --[[Set this to FALSE to:
 Make TEXT IS TELE link text units of the same type together rather than all text units
 Make TEXT IS MORE allow text units to grow into other text units as long as they are not the same type
-Make TEXT IS GROUP, NOUN HAS/MAKE GROUP make NOUN HAS/MAKE every text in the level.]]--
+Make TEXT IS GROUP, NOUN HAS/MAKE GROUP make NOUN HAS/MAKE every text in the level.]]
 
-metatext_overlaystyle = "withoutsprite" --[[ Has 3 options:
-"none" disables this feature.
-"withoutsprite" enables overlay if the sprite being used does not match the level of metatext
-Anything else always enables the overlay.]]--
+metatext_overlaystyle = get_setting("overlay_style",true) --[[Has 3 options:
+0 disables this feature.
+1 enables overlay if the "meta level" (the amount of times "text_" appears in the name excluding
+if the name ends with "text_") does not match the name of the object.
+Anything else always enables the overlay.]]
 
-metatext_textisword = false --Makes TEXT IS WORD a default rule, and breaking it will make text not parse.
+metatext_textisword = get_setting("text_word") --Makes TEXT IS WORD a default rule, and breaking it will make text not parse.
 
-metatext_istextnometa = false --[[ Makes METATEXT IS TEXT not turn the text object into it's metatext
+metatext_istextnometa = get_setting("is_nometa") --[[Makes METATEXT IS TEXT not turn the text object into it's metatext
 counterpart, instead making it not transform.
-Not recommended to set to TRUE if you are not using the Meta/Unmeta addon.]]--
+Not recommended to set to TRUE if you are not using the Meta/Unmeta addon.]]
 
-metatext_hasmaketextnometa = false --[[ Makes METATEXT HAS/MAKE TEXT not make the text object have/make
+metatext_hasmaketextnometa = get_setting("hasmake_nometa") --[[Makes METATEXT HAS/MAKE TEXT not make the text object have/make
 it's metatext counterpart. Since you can't make Has/Make Meta/Unmeta, this is really only useful for
-consistency I guess. ]]--
+consistency I guess.]]
 
-metatext_autogenerate = "never" --[[ Tries to add more metatext to the object palette if it does not exist.
+metatext_autogenerate = get_setting("auto_gen",true) --[[Tries to add more metatext to the object palette if it does not exist.
 Can only add up to 35 additional objects. REQUIRES metaunmeta.lua.
 Comes with the following options:
-"never" disables this feature.
-"trysprite" tries to use the correct sprite, if it exists. Otherwise, it uses the defeault.
-"mustsprite" is like trysprite, but if the sprite doesn't exist, it won't generate.
+0 disables this feature.
+1 tries to use the correct sprite, if it exists. Otherwise, it uses the default.
+2 is like trysprite, but if the sprite doesn't exist, it won't generate.
 Anything else always uses the default sprite. If you choose this, you're gonna want the overlay on.
-Note that if the nonexistant text is available in the editor object list, that will be referenced instead. ]]--
+Note that if the nonexistant text is available in the editor object list, that will be referenced instead.]]
 
-metatext_egg = true --Easter egg. Set to FALSE to disable.
+metatext_egg = get_setting("easter_egg") --Easter egg. Set to FALSE to disable.
+
+end
+)
 
 -- New function, checks if rule relies on TEXT noun. Based off of hasfeature()
 function checkiftextrule(rule1,rule2,rule3,unitid,findtextrule_)
@@ -62,8 +73,8 @@ end
 
 -- New function that writes the meta level of an object in the top right corner, if enabled.
 function writemetalevel()
-  MF_letterclear("metaoverlay")
-  if metatext_overlaystyle ~= "none" then
+  if metatext_overlaystyle ~= 0 and not (generaldata.values[MODE] == 5) then
+    MF_letterclear("metaoverlay")
     for id,unit in pairs(units) do
       local unitname = unit.strings[UNITNAME]
       if string.sub(unitname,1,10) == "text_text_" and unit.values[TYPE] == 0 and unit.visible then
@@ -74,10 +85,20 @@ function writemetalevel()
           metalevel = metalevel - 1
         end
         local show = true
-        if metatext_overlaystyle == "withoutsprite" then
+        if metatext_overlaystyle == 1 then
           local c = changes[unit.className] or {}
-          if c.image == nil or c.image == unitname then
+          if c.image == nil then
             show = false
+          else
+            local _,imetalevel = string.gsub(c.image,"text_","text_")
+            if string.sub(c.image,-5) == "text_" then
+              imetalevel = imetalevel - 2
+            else
+              imetalevel = imetalevel - 1
+            end
+            if imetalevel == metalevel then
+              show = false
+            end
           end
         end
         if show then
@@ -111,7 +132,7 @@ function writemetalevel()
               color = {4,2}
             end
           end
-          writetext(metalevel,-1,unit.x + (6 * spritedata.values[TILEMULT]),unit.y - (6 * spritedata.values[TILEMULT]),"metaoverlay",true,1,true,color)
+          writetext(metalevel,unit.fixed,(8 * spritedata.values[TILEMULT]),-(6 * spritedata.values[TILEMULT]),"metaoverlay",true,1,true,color)
         end
       end
     end
@@ -214,10 +235,10 @@ function formlettermap()
 			local dr = dirs[dir]
 			local ox,oy = dr[1],dr[2]
 
-			--[[
+
 			MF_debug(x,y,1)
 			MF_alert("In database: " .. v[1] .. ", dir " .. tostring(v[5]))
-			]]--
+
 
 			local tileid = x + y * roomsizex
 
@@ -240,6 +261,7 @@ function formlettermap()
 	end
 end
 -- Fix a bug where TEXT_ spells itself, causing rule duplication
+-- unfortunatly, that means TEXT_ cannot be spelled with letters
 function findletterwords(word_,wordpos_,subword_,mainbranch_)
 	local word = word_
 	local subword = subword_
@@ -276,7 +298,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 
 			if (wordpos > 0) and (string.len(word) >= 2) and mainbranch then
 				if (string.len(name) >= string.len(subword)) and (string.sub(name, 1, string.len(subword)) == subword) then
-					--[[
+
 					if (subword == name) then
 						table.insert(fullwords, {name, wordpos + 1})
 						foundsub = true
@@ -284,7 +306,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 						table.insert(newbranches, {subword, wordpos})
 						foundsub = true
 					end
-					]]--
+
 
 					table.insert(newbranches, {subword, wordpos})
 					foundsub = true
@@ -348,7 +370,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 				local name = getactualdata_objlist(realname,"name")
 				local wtype = getactualdata_objlist(realname,"type")
 
-				if (name == text) or (name == alttext and name ~= "text_text_") then
+				if string.sub(name,-5) ~= "text_" and ((name == text) or (name == alttext)) then
 					if (wtype ~= 5) then
 						if (realname_general ~= nil) then
 							objectlist[text] = 1
@@ -416,10 +438,6 @@ function tryautogenerate(want,tilename)
           data.layer or 10,
           nil,
       }
-      if metatext_autogenerate == "trysprite" or metatext_autogenerate == "mustsprite" then
-        new[2] = tilename
-        new[8] = false
-      end
       local target = "120"
       while target ~= nil do
         local done = true
@@ -562,10 +580,6 @@ function editor_trynamechange(object,newname_,fixed,objlistid,oldname_)
 	newname = string.gsub(newname, "%W", "")
 	newname = string.gsub(newname, "UNDERDASH", "_")
 
-	--[[while (string.find(newname, "text_text_") ~= nil) do
-		newname = string.gsub(newname, "text_text_", "text_")
-	end]]--
-
 	while checking do
 		checking = false
 
@@ -628,4 +642,91 @@ function editor_trynamechange(object,newname_,fixed,objlistid,oldname_)
 	end
 
 	return valid
+end
+
+-- Fix issue with FEAR.
+function getunitverbtargets(rule2)
+	local group = {}
+	local result = {}
+
+	if (featureindex[rule2] ~= nil) then
+		for i,v in ipairs(featureindex[rule2]) do
+			local rule = v[1]
+			local conds = v[2]
+
+			local name = rule[1]
+
+			local isnot = string.sub(rule[3], 1, 4)
+
+			if (rule[2] == rule2) and (conds[1] ~= "never") and (findnoun(rule[1],nlist.brief) == false) and (isnot ~= "not ") and (rule[1] ~= "text") then
+				if (group[name] == nil) then
+					group[name] = {}
+				end
+
+				table.insert(group[name], {rule[3], conds})
+			end
+		end
+
+		for name,v in pairs(group) do
+			if (string.sub(name, 1, 4) ~= "not ") then
+				if (name ~= "empty") then
+					local fgroupmembers = unitlists[name] or {}
+					local finalgroup = {}
+
+					for a,b in ipairs(fgroupmembers) do
+						local myverbs = {}
+
+						for c,d in ipairs(v) do
+							if testcond(d[2],b) then
+								local unit = mmf.newObject(b)
+
+								if (unit.flags[DEAD] == false) then
+									table.insert(myverbs, d[1])
+								end
+							end
+						end
+
+						table.insert(finalgroup, {b, myverbs})
+					end
+
+					table.insert(result, {name, finalgroup})
+				else
+					local empties = findempty()
+					local finalgroup = {}
+
+					if (#empties > 0) then
+						for a,b in ipairs(empties) do
+							local x = math.floor(b % roomsizex)
+							local y = math.floor(b / roomsizex)
+							local myverbs = {}
+
+							for c,d in ipairs(v) do
+								if testcond(d[2],2,x,y) then
+									table.insert(myverbs, d[1])
+								end
+							end
+
+							table.insert(finalgroup, {b, myverbs})
+						end
+
+						table.insert(result, {name, finalgroup})
+					end
+				end
+			end
+		end
+	end
+
+	return result
+end
+
+-- Gives warning upon load, if enabled
+-- Make sure this is the last thing
+if metatext_warning then
+  if string.lower(metatext_version) ~= string.lower(MF_getversion()) then
+    if string.lower(metatext_version) > string.lower(MF_getversion()) then
+      error(string.format("\nYour game is too outdated to work with this version of the metatext mod.\n\nMetatext mod version: %s\nCurrent game version: %s\n\nYou can disable this error in the levelpack settings.",metatext_version,MF_getversion()),2)
+    else
+      error(string.format("\nThis version of the metatext mod is outdated.\n\nMetatext mod version: %s\nCurrent game version: %s\n\nYou can disable this error in the levelpack settings.",metatext_version,MF_getversion()),2)
+    end
+  end
 end

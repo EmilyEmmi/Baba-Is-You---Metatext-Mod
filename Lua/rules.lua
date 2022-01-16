@@ -336,7 +336,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 
 		local groupcond = false
 
-		if (string.sub(target, 1, 5) == "group") or (string.sub(effect, 1, 5) == "group") or (string.sub(target, 1, 9) == "not group") or (string.sub(effect, 1, 9) == "not group") then
+		if (string.sub(target, 1, 5) == "group") or (string.sub(effect, 1, 5) == "group" and (verb ~= "write" or not foundtag)) or (string.sub(target, 1, 9) == "not group") or (string.sub(effect, 1, 9) == "not group") then
 			groupcond = true
 		end
 
@@ -507,7 +507,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 				end
 			end
 		end
-		if (effect == "text" or effect == "not text") and verb ~= "is" and verb ~= "make" and verb ~= "has" then
+		if (effect == "text" or effect == "not text") and verb ~= "is" and verb ~= "make" and verb ~= "has" and verb ~= "write" then
 			for a,b in pairs(fullunitlist) do -- fullunitlist contains all units, is new
 				if (string.sub(a, 1, 5) == "text_") then
 					local newconds = {}
@@ -1172,14 +1172,14 @@ function grouprules()
 			if (memberships[rule[3]] ~= nil) then
 				for a,b in ipairs(memberships[rule[3]]) do
 					local foundtag = false
-					if metatext_fixquirks and (rule[2] == "has" or rule[2] == "make") and b[1] ~= "text" then
+					if metatext_fixquirks and (rule[2] == "has" or rule[2] == "make" or rule[2] == "write") and b[1] ~= "text" then
 						for num,tag in ipairs(b[3]) do
 							if tag == "text" then
 								foundtag = true
 								break
 							end
 						end
-					elseif b[1] == "text" and (rule[2] ~= "has" and rule[2] ~= "make") then
+					elseif b[1] == "text" and (rule[2] ~= "has" and rule[2] ~= "make" and rule[2] ~= "write") then
 						foundtag = true
 					end
 					if not foundtag then

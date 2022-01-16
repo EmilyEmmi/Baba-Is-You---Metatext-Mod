@@ -172,6 +172,23 @@ function getmat(m,checkallunit)
 	end
 end
 
+-- Make WRITE work with text.
+function getmat_text(name)
+	if string.sub(name,1,10) == "text_text_" then
+		return true
+	end
+	local base = unitreference[name]
+	local changed = objectpalette[name]
+
+	if (generaldata.strings[WORLD] ~= generaldata.strings[BASEWORLD]) then
+		return (changed ~= nil)
+	else
+		return (base ~= nil)
+	end
+
+	return false
+end
+
 -- Prevent text from being called "text", except in some parameter cases
 function getname(unit,pname_,pnot_)
 	local result = unit.strings[UNITNAME]

@@ -33,6 +33,7 @@ function addunit(id,undoing_)
 
 	local name = getname(unit)
 	local name_ = unit.strings[NAME]
+	unit.originalname = unit.strings[UNITNAME]
 
 	if (unitlists[name] == nil) then
 		unitlists[name] = {}

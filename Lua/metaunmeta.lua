@@ -205,7 +205,7 @@ function postrules(alreadyrun_)
 						local targetconds = rules[2]
 						local object = targetrule[3]
 
-						if (targetrule[1] == target) and (targetrule[2] == "is") and (target ~= object) and ((getmat(object) ~= nil) or (object == "revert")  or (object == "meta")  or (object == "unmeta")) and (string.sub(object, 1, 5) ~= "group") then
+						if (targetrule[1] == target) and (((targetrule[2] == "is") and (target ~= object)) or (targetrule[2] == "write")) and ((getmat(object) ~= nil) or (object == "revert") or (targetrule[2] == "write") or (object == "meta")  or (object == "unmeta")) and (string.sub(object, 1, 5) ~= "group") then
 							if (#newconds > 0) then
 								if (newconds[1] == "never") then
 									targetconds = {}
@@ -243,15 +243,30 @@ function conversion(dolevels_)
 
 		local operator = words[2]
 
-		if (operator == "is") then
+		if (operator == "is") or (operator == "write") then
 			local output = {}
 			local name = words[1]
 			local thing = words[3]
 
-      if (not dolevels) and name ~= "text" and ((thing ~= "not " .. name) and (thing ~= "all") and (thing ~= "text") and (thing ~= "revert") and (thing ~= "meta") and (thing ~= "unmeta")) and unitreference[thing] == nil and string.sub(thing,1,5) == "text_" and unitlists[name] ~= nil and #unitlists[name] > 0 then
+      if (not dolevels) and operator == "is" and name ~= "text" and ((thing ~= "not " .. name) and (thing ~= "all") and (thing ~= "text") and (thing ~= "revert") and (thing ~= "meta") and (thing ~= "unmeta")) and unitreference[thing] == nil and string.sub(thing,1,5) == "text_" and unitlists[name] ~= nil and #unitlists[name] > 0 then
         tryautogenerate(nil,thing)
+      elseif (not dolevels) and operator == "write" and name ~= "text" and (thing ~= "not " .. name) and unitreference["text_" .. thing] == nil and string.sub(thing,1,5) == "text_" and unitlists[name] ~= nil and #unitlists[name] > 0 then
+        local lowestlevel = "text_" .. string.gsub(thing,"text_","")
+        if lowestlevel == "text_" then
+          lowestlevel = "text_text_"
+        end
+        local SAFETY = 0
+        while not getmat_text(lowestlevel) and SAFETY < 1000 do
+          lowestlevel = "text_" .. lowestlevel
+          SAFETY = SAFETY + 1
+        end
+        -- this will probably never happen but idk
+        if SAFETY >= 1000 then
+          error("Never got lowest level for auto-generation from WRITE. Please report this.")
+        end
+        tryautogenerate("text_" .. thing,lowestlevel)
       end
-			if name ~= "text" and ((getmat(thing) ~= nil) or (thing == "not " .. name) or (thing == "all") or (unitreference[thing] ~= nil) or ((thing == "text") and (unitreference["text_text"] ~= nil)) or (thing == "revert") or (thing == "meta") or (thing == "unmeta")) then
+			if (getmat(thing) ~= nil) or (thing == "not " .. name) or (thing == "all") or (unitreference[thing] ~= nil) or ((thing == "text") and (unitreference["text_text"] ~= nil)) or (thing == "revert") or (thing == "meta") or (thing == "unmeta") or ((operator == "write") and getmat_text("text_" .. name)) then
 				if (featureindex[name] ~= nil) and (alreadydone[name] == nil) then
 					alreadydone[name] = 1
 
@@ -260,23 +275,29 @@ function conversion(dolevels_)
 						local conds = b[2]
 						local target,verb,object = rule[1],rule[2],rule[3]
 
-						if (target == name) and (verb == "is") and (object ~= name) and (object ~= "word") then
-							if (object ~= "text") and (object ~= "revert") and (object ~= "meta") and (object ~= "unmeta") then
-								if (object == "not " .. name) then
-									table.insert(output, {"error", conds})
-								else
-									for d,mat in pairs(objectlist) do
-										if (string.sub(d, 1, 5) ~= "group") and (d == object) then
-											table.insert(output, {object, conds})
+						if (verb == "is") then
+							if (target == name) and (object ~= name) and (object ~= "word") then
+								if (object ~= "text") and (object ~= "revert") and (object ~= "meta") and (object ~= "unmeta") then
+									if (object == "not " .. name) then
+										table.insert(output, {"error", conds, "is"})
+									else
+										for d,mat in pairs(objectlist) do
+											if (string.sub(d, 1, 5) ~= "group") and (d == object) then
+												table.insert(output, {object, conds, "is"})
+											end
 										end
 									end
+								elseif (name ~= object) then
+									if (object ~= "revert") and (object ~= "meta") and (object ~= "unmeta") then
+										table.insert(output, {object, conds, "is"})
+									else
+										table.insert(output, 1, {object, conds, "is"})
+									end
 								end
-							elseif (name ~= object) then
-								if (object ~= "revert") then
-									table.insert(output, {object, conds})
-								else
-									table.insert(output, 1, {object, conds})
-								end
+							end
+						elseif (verb == "write") then
+							if (object ~= "not " .. name) and (target == name) then
+								table.insert(output, {object, conds, "write"})
 							end
 						end
 					end
@@ -288,23 +309,28 @@ function conversion(dolevels_)
 					for k,v3 in pairs(output) do
 						local object = v3[1]
 						local conds = v3[2]
+						local op = v3[3]
 
-						if (findnoun(object,nlist.brief) == false) and (object ~= "word") and (object ~= "text") and (object ~= "meta") and (object ~= "unmeta") then
+						if (op == "is") then
+							if (findnoun(object,nlist.brief) == false) and (object ~= "word") and (object ~= "text") then
+								table.insert(conversions, v3)
+							elseif (object == "all") then
+								addaction(0,{"createall",{name,conds},dolevels})
+								--createall({name,conds})
+							elseif (object == "text") or (object == "meta") then
+								table.insert(conversions, {"text_" .. name,conds})
+                if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
+                  tryautogenerate(nil,string.sub(name,6))
+                end
+              elseif (object == "unmeta") and string.sub(name,1,5) == "text_" then
+                table.insert(conversions, {string.sub(name,6),conds})
+                if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
+                  tryautogenerate(nil,string.sub(name,6))
+                end
+              end
+						elseif (op == "write") then
 							table.insert(conversions, v3)
-						elseif (object == "all") then
-							addaction(0,{"createall",{name,conds},dolevels})
-							--createall({name,conds})
-						elseif (object == "text") or (object == "meta") then
-							table.insert(conversions, {"text_" .. name,conds})
-              if unitreference["text_" .. name] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
-                tryautogenerate("text_" .. name,name)
-              end
-            elseif (object == "unmeta") and string.sub(name,1,5) == "text_" then
-              table.insert(conversions, {string.sub(name,6),conds})
-              if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
-                tryautogenerate(nil,string.sub(name,6))
-              end
-            end
+						end
 					end
 
 					if (#conversions > 0) then
