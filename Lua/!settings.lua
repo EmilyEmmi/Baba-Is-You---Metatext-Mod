@@ -175,7 +175,15 @@ function get_setting(setting,raw)
     end
   else
     if metatext_settings_list[setting] ~= nil then
-      return metatext_settings_list[setting].default
+      if raw and metatext_settings_list[setting].boolean then
+        if metatext_settings_list[setting].default == true then
+          return 1
+        else
+          return 0
+        end
+      else
+        return metatext_settings_list[setting].default
+      end
     else
       error(setting .. " not defined!")
     end
