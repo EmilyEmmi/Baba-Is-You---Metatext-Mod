@@ -235,10 +235,10 @@ function formlettermap()
 			local dr = dirs[dir]
 			local ox,oy = dr[1],dr[2]
 
-
+			--[[
 			MF_debug(x,y,1)
 			MF_alert("In database: " .. v[1] .. ", dir " .. tostring(v[5]))
-
+			]]--
 
 			local tileid = x + y * roomsizex
 
