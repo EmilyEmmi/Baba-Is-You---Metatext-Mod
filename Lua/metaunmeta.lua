@@ -312,7 +312,7 @@ function conversion(dolevels_)
 						local op = v3[3]
 
 						if (op == "is") then
-							if (findnoun(object,nlist.brief) == false) and (object ~= "word") and (object ~= "text") then
+							if (findnoun(object,nlist.brief) == false) and (object ~= "word") and (object ~= "text") and (object ~= "meta") and (object ~= "unmeta") then
 								table.insert(conversions, v3)
 							elseif (object == "all") then
 								addaction(0,{"createall",{name,conds},dolevels})
