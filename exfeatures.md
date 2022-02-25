@@ -17,6 +17,7 @@ Note: Baba will not send a text message.
 These properties change the meta level of text/objects:
 - META raises the meta level. ROCK is changed to TEXT_ROCK, TEXT_ROCK is changed to TEXT_TEXT_ROCK, etc.
 - UNMETA lowers the meta level. TEXT_TEXT_ROCK becomes TEXT_ROCK and TEXT_ROCK becomes ROCK. Texts that don't have an associated object won't be changed.
+
 **These are considered transformations, so NOUN IS NOUN will disable them.**
 Simply don't omit the file "metaunmeta.lua" to get this word.
 
