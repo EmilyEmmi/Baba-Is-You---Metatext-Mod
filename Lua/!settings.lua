@@ -1,7 +1,7 @@
 --[[ This file is named this way to make sure it runs first.
 Obviously, this is ripping off- I mean, INSPIRED by Plasmaflare's.]]
 
-metatext_version = "454" -- make sure this is lowercase
+metatext_version = "460c" -- make sure this is lowercase
 
 -- Set up the settings.
 metatext_settings_list = {

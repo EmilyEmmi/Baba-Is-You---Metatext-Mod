@@ -1,4 +1,4 @@
--- Add exceptions to every getname call to fix NOT X and TEXT conditions.
+-- Fixes FEELING and TEXT parameters mixed with METATEXT parameters.
 function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken_,subgroup_)
 	local result = true
 
@@ -103,19 +103,18 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					condtype = string.sub(condtype, 1, string.len(condtype) - 1)
 				end
 
-				local isnot = string.sub(condtype, 1, 4)
+				local basecondtype = string.sub(condtype, 1, 4)
 				local notcond = false
-				local powercond = false
 
-				if (isnot == "not ") then
-					isnot = string.sub(condtype, 5)
+				if (basecondtype == "not ") then
+					basecondtype = string.sub(condtype, 5)
 					notcond = true
 				else
-					isnot = condtype
+					basecondtype = condtype
 				end
 
 				if (condtype ~= "never") then
-					local condname = unitreference["text_" .. isnot]
+					local condname = unitreference["text_" .. basecondtype]
 
 					local conddata = conditions[condname] or {}
 					if (conddata.argextra ~= nil) then
@@ -138,7 +137,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					local handlegroup = false
 
 					for a,b in ipairs(params_) do
-						if (string.sub(b, 1, 4) == "not ") or b == "text" then
+						if (string.sub(b, 1, 4) == "not ") or b == "text" then -- Fix TEXT and metatext in conditions
 							table.insert(params, b)
 						else
 							table.insert(params, 1, b)
@@ -190,7 +189,7 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							if (mem ~= nil) then
 								for c,d in ipairs(mem) do
-									if notnoun or d == "text" then
+									if notnoun then
 										table.insert(params, d)
 									else
 										table.insert(params, 1, d)
@@ -212,198 +211,32 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					end
 				end
 
-				local powername = ""
-				if (string.sub(isnot, 1, 7) == "powered") then
-					powercond = true
+				local condsubtype = ""
 
-					if (#isnot > 7) then
-						powername = string.sub(isnot, 8)
+				if (string.sub(basecondtype, 1, 7) == "powered") then
+					for a,b in pairs(condlist) do
+						if (#basecondtype > #a) and (string.sub(basecondtype, 1, #a) == a) then
+							condsubtype = string.sub(basecondtype, #a + 1)
+
+							basecondtype = string.sub(basecondtype, 1, #a)
+							break
+						end
 					end
 				end
 
-				if (condtype == "never") then
-					valid = true
-					if (orhandling == false) then
-						result = false
-						break
-					end
-				elseif (condtype == "not never") then
+				if (condlist[basecondtype] ~= nil) then
 					valid = true
 
-					if orhandling then
-						orresult = true
-					end
-				elseif (condtype == "on") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
+					local cfunc = condlist[basecondtype]
+					local subresult = true
+					local cdata = {name = name, x = x, y = y, unitid = unitid, dir = dir, extras = extras, limit = limit, conds = tostring(conds), subtype = condsubtype, i = i, surrounds = surrounds}
+					subresult,checkedconds = cfunc(params,checkedconds,checkedconds_,cdata)
 
-					local tileid = x + y * roomsizex
-
-					if (name ~= "empty") then
-						if (#params > 0) then
-							for a,b in ipairs(params) do
-								local pname = b
-								local pnot = false
-								if (string.sub(b, 1, 4) == "not ") then
-									pnot = true
-									pname = string.sub(b, 5)
-								end
-
-								local bcode = b .. "_" .. tostring(a)
-
-								if (string.sub(pname, 1, 5) == "group") then
-									result = false
-									break
-								end
-
-								if (unitid ~= 1) then
-									if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
-										if (unitmap[tileid] ~= nil) then
-											for c,d in ipairs(unitmap[tileid]) do
-												if (d ~= unitid) and (alreadyfound[d] == nil) then
-													local unit = mmf.newObject(d)
-													local name_ = getname(unit,pname,pnot)
-
-													if (pnot == false) then
-														if (name_ == pname) and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[d] = 1
-															allfound = allfound + 1
-														end
-													else
-														if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-															alreadyfound[bcode] = 1
-															alreadyfound[d] = 1
-															allfound = allfound + 1
-														end
-													end
-												end
-											end
-										else
-											print("unitmap is nil at " .. tostring(x) .. ", " .. tostring(y) .. " for object " .. tostring(name) .. " (" .. tostring(unitid) .. ")!")
-										end
-									elseif (pname == "empty") then
-										if (pnot == false) then
-											result = false
-										else
-											if (unitmap[tileid] ~= nil) then
-												for c,d in ipairs(unitmap[tileid]) do
-													if (d ~= unitid) and (alreadyfound[d] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-										alreadyfound[bcode] = 1
-										alreadyfound[1] = 1
-										allfound = allfound + 1
-									end
-								else
-									local ulist = false
-
-									if (b ~= "empty") and (b ~= "level") then
-										if (pnot == false) then
-											if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-												for c,d in ipairs(unitlists[b]) do
-													if (alreadyfound[d] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														ulist = true
-														break
-													end
-												end
-											end
-										else
-											for c,d in pairs(unitlists) do
-												local tested = false
-
-												if (c ~= pname) and (#d > 0) then
-													for e,f in ipairs(d) do
-														if (alreadyfound[f] == nil) and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[f] = 1
-															ulist = true
-															tested = true
-															break
-														end
-													end
-												end
-
-												if tested then
-													break
-												end
-											end
-										end
-									elseif (b == "empty") then
-										local empties = findempty()
-
-										if (#empties > 0) then
-											for c,d in ipairs(empties) do
-												if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									elseif (b == "level") then
-										for c,unit in ipairs(units) do
-											if (unit.className == "level") and (alreadyfound[unit.fixed] == nil) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[unit.fixed] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-
-									if (b ~= "text") and (ulist == false) then
-										if (surrounds["o"] ~= nil) then
-											for c,d in ipairs(surrounds["o"]) do
-												if (pnot == false) then
-													if (d == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														ulist = true
-													end
-												else
-													if (d ~= pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														ulist = true
-													end
-												end
-											end
-										end
-									end
-
-									if ulist or (b == "text") then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								end
-							end
-						else
-							print("no parameters given!")
-							result = false
-						end
-					else
-						for a,b in ipairs(params) do
-							local bcode = b .. "_" .. tostring(a)
-
-							if (b == "level") and (alreadyfound[bcode] == nil) then
-								alreadyfound[bcode] = 1
-								allfound = allfound + 1
-							else
-								result = false
-							end
-						end
+					if notcond then
+						subresult = not subresult
 					end
 
-					if (allfound ~= #params) then
+					if (subresult == false) then
 						if (orhandling == false) then
 							result = false
 							break
@@ -411,3560 +244,10 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					elseif orhandling then
 						orresult = true
 					end
-				elseif (condtype == "not on") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					local tileid = x + y * roomsizex
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if ((b ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (unitmap[tileid] ~= nil) then
-										for c,d in ipairs(unitmap[tileid]) do
-											if (d ~= unitid) and (alreadyfound[d] == nil) then
-												local unit = mmf.newObject(d)
-												local name_ = getname(unit,pname,pnot)
-
-												if (pnot == false) then
-													if (name_ == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (name_ ~= pname) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									else
-										print("unitmap is nil at " .. tostring(x) .. ", " .. tostring(y) .. "!")
-									end
-								elseif (b == "empty") then
-									local onempty = false
-
-									if (unitmap[tileid] == nil) or (#unitmap[tileid] == 0) then
-										onempty = true
-									end
-
-									if onempty and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if result then
-									if (surrounds["o"] ~= nil) then
-										for c,d in ipairs(surrounds["o"]) do
-											if (pnot == false) then
-												if (d == b) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (d ~= b) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "facing") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (name == "empty") then
-						dir = emptydir(x,y)
-					end
-
-					local ndrs = ndirs[dir+1]
-					local ox = ndrs[1]
-					local oy = ndrs[2]
-
-					local tileid = (x + ox) + (y + oy) * roomsizex
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (stringintable(pname, extras) == false) then
-										if (unitmap[tileid] ~= nil) and (dir ~= 4) then
-											for c,d in ipairs(unitmap[tileid]) do
-												if (d ~= unitid) and (alreadyfound[d] == nil) then
-													local unit = mmf.newObject(d)
-													local name_ = getname(unit,pname,pnot)
-
-													if (pnot == false) then
-														if (name_ == pname) and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[d] = 1
-															allfound = allfound + 1
-														end
-													else
-														if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-															alreadyfound[bcode] = 1
-															alreadyfound[d] = 1
-															allfound = allfound + 1
-														end
-													end
-												end
-											end
-										end
-									else
-										if (pnot == false) then
-											if ((pname == "right") and (dir == 0)) or ((pname == "up") and (dir == 1)) or ((pname == "left") and (dir == 2)) or ((pname == "down") and (dir == 3)) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										else
-											if ((pname == "right") and (dir ~= 0)) or ((pname == "up") and (dir ~= 1)) or ((pname == "left") and (dir ~= 2)) or ((pname == "down") and (dir ~= 3)) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								elseif (pname == "empty") and (dir ~= 4) then
-									local l = map[0]
-									local tile = l:get_x(x + ox,y + oy)
-
-									if (pnot == false) then
-										if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) then
-											if (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									else
-										if ((unitmap[tileid] ~= nil) and (#unitmap[tileid] > 0)) or (tile ~= 255) then
-											if (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									end
-								elseif (b == "level") and (dir ~= 4) and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local dirids = {"r","u","l","d"}
-								local dirid = dirids[dir + 1]
-
-								if (surrounds[dirid] ~= nil) and (dir ~= 4) then
-									for c,d in ipairs(surrounds[dirid]) do
-										if (pnot == false) then
-											if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										else
-											if (d ~= pname or not (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not facing") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (name == "empty") then
-						dir = emptydir(x,y)
-					end
-
-					local ndrs = ndirs[dir+1]
-					local ox = ndrs[1]
-					local oy = ndrs[2]
-
-					local tileid = (x + ox) + (y + oy) * roomsizex
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (stringintable(pname, extras) == false) then
-										if (dir ~= 4) then
-											if (unitmap[tileid] ~= nil) then
-												for c,d in ipairs(unitmap[tileid]) do
-													if (d ~= unitid) and (alreadyfound[d] == nil) then
-														local unit = mmf.newObject(d)
-														local name_ = getname(unit,pname,pnot)
-
-														if (pnot == false) then
-															if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																alreadyfound[bcode] = 1
-																alreadyfound[d] = 1
-																allfound = allfound + 1
-															end
-														else
-															if (name_ ~= pname) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																alreadyfound[bcode] = 1
-																alreadyfound[d] = 1
-																allfound = allfound + 1
-															end
-														end
-													end
-												end
-											end
-										elseif (alreadyfound[bcode] == nil) then
-											alreadyfound[bcode] = 1
-											allfound = allfound + 1
-										end
-									else
-										if (pnot == false) then
-											if ((pname == "right") and (dir == 0)) or ((pname == "up") and (dir == 1)) or ((pname == "left") and (dir == 2)) or ((pname == "down") and (dir == 3)) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										else
-											if ((pname == "right") and (dir ~= 0)) or ((pname == "up") and (dir ~= 1)) or ((pname == "left") and (dir ~= 2)) or ((pname == "down") and (dir ~= 3)) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								elseif (pname == "empty") then
-									local l = map[0]
-									local tile = l:get_x(x + ox,y + oy)
-
-									if (dir ~= 4) then
-										if (pnot == false) then
-											if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										else
-											if ((unitmap[tileid] ~= nil) and (#unitmap[tileid] > 0)) or (tile ~= 255) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									elseif (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local dirids = {"r","u","l","d"}
-								local dirid = dirids[dir + 1]
-
-								if (surrounds[dirid] ~= nil) and (dir ~= 4) then
-									for c,d in ipairs(surrounds[dirid]) do
-										if (pnot == false) then
-											if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										else
-											if (d ~= pname or not (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "seeing") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-					local targets = {}
-
-					if (name == "empty") then
-						dir = emptydir(x,y)
-					end
-
-					local ndrs = ndirs[dir+1]
-					local ox = ndrs[1]
-					local oy = ndrs[2]
-
-					local nx,ny = x,y
-					local tileid = (x + ox) + (y + oy) * roomsizex
-					local solid = 0
-
-					if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds) .. "_s_"] ~= nil) then
-						result = false
-						dir = 4
-					end
-
-					if (#params > 0) and (dir ~= 4) then
-						while (solid == 0) and inbounds(nx,ny,1) do
-							nx = nx + ox
-							ny = ny + oy
-
-							tileid = nx + ny * roomsizex
-
-							if inbounds(nx,ny,1) then
-								if (unitmap[tileid] ~= nil) then
-									if (#unitmap[tileid] > 0) then
-										local detected = false
-
-										for a,b in ipairs(unitmap[tileid]) do
-											local unit = mmf.newObject(b)
-											local name_ = getname(unit,pname,pnot)
-
-											if (hasfeature(name_,"is","hide",b,nx,ny,checkedconds) == nil) then
-												table.insert(targets, {b, name_})
-												detected = true
-											end
-										end
-
-										if (detected == false) then
-											table.insert(targets, {2, "empty"})
-										end
-									else
-										table.insert(targets, {2, "empty"})
-									end
-								else
-									table.insert(targets, {2, "empty"})
-								end
-
-								solid = simplecheck(nx,ny,true,checkedconds)
-							else
-								solid = 1
-							end
-						end
-
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									for c,d_ in ipairs(targets) do
-										local d = d_[1]
-
-										if (d ~= unitid) and (alreadyfound[d] == nil) and (d ~= 2) then
-											local name_ = d_[2]
-
-											if (pnot == false) then
-												if (name_ == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								elseif (pname == "empty") then
-									for c,d_ in ipairs(targets) do
-										local d = d_[1]
-
-										if (d == 2) then
-											if (pnot == false) then
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local dirids = {"r","u","l","d"}
-								local dirid = dirids[dir + 1]
-
-								if (surrounds[dirid] ~= nil) then
-									for c,d in ipairs(surrounds[dirid]) do
-										if (pnot == false) then
-											if (d == pname) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										else
-											if (d ~= pname) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									end
-								end
-							end
-						end
-					elseif (#params == 0) then
-						print("no parameters given!")
-						result = false
-					else
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not seeing") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-					local targets = {}
-
-					if (name == "empty") then
-						dir = emptydir(x,y)
-					end
-
-					local ndrs = ndirs[dir+1]
-					local ox = ndrs[1]
-					local oy = ndrs[2]
-
-					local nx,ny = x,y
-					local tileid = (x + ox) + (y + oy) * roomsizex
-					local solid = 0
-
-					if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds) .. "_s_"] ~= nil) then
-						result = false
-						dir = -99
-					end
-
-					if (#params > 0) and (dir ~= -99) then
-						while (solid == 0) and inbounds(nx,ny,1) do
-							nx = nx + ox
-							ny = ny + oy
-
-							tileid = nx + ny * roomsizex
-
-							if inbounds(nx,ny,1) then
-								if (unitmap[tileid] ~= nil) then
-									if (#unitmap[tileid] > 0) then
-										local detected = false
-
-										for a,b in ipairs(unitmap[tileid]) do
-											local unit = mmf.newObject(b)
-											local name_ = getname(unit,pname,pnot)
-
-											if (hasfeature(name_,"is","hide",d,nx,ny,checkedconds) == nil) then
-												table.insert(targets, {b, name_})
-												detected = true
-											end
-										end
-
-										if (detected == false) then
-											table.insert(targets, {2, "empty"})
-										end
-									else
-										table.insert(targets, {2, "empty"})
-									end
-								else
-									table.insert(targets, {2, "empty"})
-								end
-
-								solid = simplecheck(nx,ny,true,checkedconds)
-							else
-								solid = 1
-							end
-						end
-
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (dir ~= 4) then
-										for c,d_ in ipairs(targets) do
-											local d = d_[1]
-
-											if (d ~= unitid) and (alreadyfound[d] == nil) and (d ~= 2) then
-												local name_ = d_[2]
-
-												if (pnot == false) then
-													if (name_ == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (name_ ~= pname) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									elseif (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								elseif (pname == "empty") then
-									if (dir ~= 4) then
-										for c,d_ in ipairs(targets) do
-											local d = d_[1]
-
-											if (d == 2) then
-												if (pnot == false) then
-													if (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[d] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									elseif (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local dirids = {"r","u","l","d"}
-								local dirid = dirids[dir + 1]
-
-								if (surrounds[dirid] ~= nil) and (dir ~= 4) then
-									for c,d in ipairs(surrounds[dirid]) do
-										if (pnot == false) then
-											if (d == pname) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										else
-											if (d ~= pname) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									end
-								end
-							end
-						end
-					elseif (#params == 0) then
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "near") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									for g=-1,1 do
-										for h=-1,1 do
-											if (pname ~= "empty") then
-												local tileid = (x + g) + (y + h) * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = (x + g) + (y + h) * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x + g,y + h)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (g == 0) and (h == 0) then
-													if (unitid == 2) then
-														if (pnot == false) then
-															nearempty = false
-														end
-													elseif (unitid ~= 1) and pnot then
-														if (unitmap[tileid] == nil) or (#unitmap[tileid] <= 1) then
-															nearempty = true
-														end
-													end
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "level") then
-									if (pnot == false) then
-										if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) then
-											for c,d in ipairs(unitlists[pname]) do
-												if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														ulist = true
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-								end
-
-								if (b ~= "text") and (ulist == false) then
-									for e,f in pairs(surrounds) do
-										if (e ~= "dir") then
-											for c,d in ipairs(f) do
-												if (pnot == false) then
-													if (ulist == false) and (d == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														ulist = true
-													end
-												else
-													if (ulist == false) and (d ~= pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														ulist = true
-													end
-												end
-											end
-										end
-									end
-								end
-
-								if ulist or (b == "text") then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not near") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									for g=-1,1 do
-										for h=-1,1 do
-											if (pname ~= "empty") then
-												local tileid = (x + g) + (y + h) * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (d ~= unitid) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = (x + g) + (y + h) * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x + g,y + h)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (g == 0) and (h == 0) then
-													if (unitid == 2) then
-														if (pnot == false) then
-															nearempty = false
-														end
-													elseif (unitid ~= 1) and pnot then
-														if (unitmap[tileid] == nil) or (#unitmap[tileid] <= 1) then
-															nearempty = true
-														end
-													end
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if (p ~= "text") and (alreadyfound[bcode] == nil) then
-									for e,f in pairs(surrounds) do
-										local tested = false
-
-										if (e ~= "dir") then
-											for c,d in ipairs(f) do
-												if (pnot == false) then
-													if (d == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												else
-													if (d ~= pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-										end
-
-										if tested then
-											break
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "nextto") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									for g=-1,1 do
-										for h=-1,1 do
-											if ((h ~= 0) and (g == 0)) or ((h == 0) and (g ~= 0)) then
-												if (pname ~= "empty") then
-													local tileid = (x + g) + (y + h) * roomsizex
-													if (unitmap[tileid] ~= nil) then
-														for c,d in ipairs(unitmap[tileid]) do
-															if (d ~= unitid) and (alreadyfound[d] == nil) then
-																local unit = mmf.newObject(d)
-																local name_ = getname(unit,pname,pnot)
-
-																if (pnot == false) then
-																	if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																		alreadyfound[bcode] = 1
-																		alreadyfound[d] = 1
-																		allfound = allfound + 1
-																	end
-																else
-																	if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-																		alreadyfound[bcode] = 1
-																		alreadyfound[d] = 1
-																		allfound = allfound + 1
-																	end
-																end
-															end
-														end
-													end
-												else
-													local nearempty = false
-
-													local tileid = (x + g) + (y + h) * roomsizex
-													local l = map[0]
-													local tile = l:get_x(x + g,y + h)
-
-													local tcode = tostring(tileid) .. "e"
-
-													if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-														nearempty = true
-													end
-
-													if (g == 0) and (h == 0) then
-														if (unitid == 2) then
-															if (pnot == false) then
-																nearempty = false
-															end
-														elseif (unitid ~= 1) and pnot then
-															if (unitmap[tileid] == nil) or (#unitmap[tileid] <= 1) then
-																nearempty = true
-															end
-														end
-													end
-
-													if (pnot == false) then
-														if nearempty and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[tcode] = 1
-															allfound = allfound + 1
-														end
-													else
-														if (nearempty == false) and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[tcode] = 1
-															allfound = allfound + 1
-														end
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "level") then
-									if (pnot == false) then
-										if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) then
-											for c,d in ipairs(unitlists[pname]) do
-												if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														ulist = true
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-								end
-
-								if (b ~= "text") and (ulist == false) then
-									for e,f in pairs(surrounds) do
-										if (e ~= "dir") and (e ~= "o") then
-											for c,d in ipairs(f) do
-												if (pnot == false) then
-													if (ulist == false) and (d == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														ulist = true
-													end
-												else
-													if (ulist == false) and (d ~= pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														ulist = true
-													end
-												end
-											end
-										end
-									end
-								end
-
-								if ulist or (b == "text") then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not nextto") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									for g=-1,1 do
-										for h=-1,1 do
-											if ((h ~= 0) and (g == 0)) or ((h == 0) and (g ~= 0)) then
-												if (pname ~= "empty") then
-													local tileid = (x + g) + (y + h) * roomsizex
-													if (unitmap[tileid] ~= nil) then
-														for c,d in ipairs(unitmap[tileid]) do
-															if (d ~= unitid) and (alreadyfound[d] == nil) then
-																local unit = mmf.newObject(d)
-																local name_ = getname(unit,pname,pnot)
-
-																if (pnot == false) then
-																	if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
-																		alreadyfound[bcode] = 1
-																		alreadyfound[d] = 1
-																		allfound = allfound + 1
-																	end
-																else
-																	if (name_ ~= pname) and (d ~= unitid) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																		alreadyfound[bcode] = 1
-																		alreadyfound[d] = 1
-																		allfound = allfound + 1
-																	end
-																end
-															end
-														end
-													end
-												else
-													local nearempty = false
-
-													local tileid = (x + g) + (y + h) * roomsizex
-													local l = map[0]
-													local tile = l:get_x(x + g,y + h)
-
-													local tcode = tostring(tileid) .. "e"
-
-													if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-														nearempty = true
-													end
-
-													if (g == 0) and (h == 0) then
-														if (unitid == 2) then
-															if (pnot == false) then
-																nearempty = false
-															end
-														elseif (unitid ~= 1) and pnot then
-															if (unitmap[tileid] == nil) or (#unitmap[tileid] <= 1) then
-																nearempty = true
-															end
-														end
-													end
-
-													if (pnot == false) then
-														if nearempty and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[tcode] = 1
-															allfound = allfound + 1
-														end
-													else
-														if (nearempty == false) and (alreadyfound[bcode] == nil) then
-															alreadyfound[bcode] = 1
-															alreadyfound[tcode] = 1
-															allfound = allfound + 1
-														end
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if (p ~= "text") and (alreadyfound[bcode] == nil) then
-									for e,f in pairs(surrounds) do
-										local tested = false
-
-										if (e ~= "dir") and (e ~= "o") then
-											for c,d in ipairs(f) do
-												if (pnot == false) then
-													if (d == pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												else
-													if (d ~= pname) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-										end
-
-										if tested then
-											break
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "without") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-					local unitcount = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							if (unitcount[b] == nil) then
-								unitcount[b] = 0
-							end
-
-							unitcount[b] = unitcount[b] + 1
-						end
-
-						if (unitcount["level"] ~= nil) and (unitcount["level"] > 0) then
-							unitcount["level"] = unitcount["level"] - 1
-						end
-
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if ((b ~= "level") and (b ~= "empty")) or ((b == "level") and (unitcount["level"] > 0)) then
-								if (pnot == false) then
-									if (alreadyfound[bcode] == nil) then
-										if (unitlists[b] == nil) or (#unitlists[b] == 0) and (alreadyfound[bcode] == nil) then
-											alreadyfound[bcode] = 1
-											allfound = allfound + 1
-										elseif (unitlists[b] ~= nil) and (#unitlists[b] > 0) then
-											local found = false
-
-											if (b ~= name) or (b == "text" and string.sub(name,1,5) == "text_") then
-												if (#unitlists[b] < unitcount[b]) then
-													found = true
-												end
-											else
-												if (#unitlists[b] < unitcount[b] + 1) then
-													found = true
-												end
-											end
-
-											if found then
-												alreadyfound[bcode] = 1
-												allfound = allfound + 1
-											end
-										end
-									end
-								else
-									local foundunits = 0
-
-									for c,d in pairs(unitlists) do
-										if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") and (string.sub(c,1,5) ~= "text_") then
-											for e,f in ipairs(d) do
-												if (f ~= unitid) and (alreadyfound[f] == nil) then
-													alreadyfound[f] = 1
-													foundunits = foundunits + 1
-
-													if (foundunits >= unitcount[b]) then
-														break
-													end
-												end
-											end
-										end
-
-										if (foundunits >= unitcount[b]) then
-											break
-										end
-									end
-
-									if (foundunits < unitcount[b]) and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								end
-							elseif (b == "empty") then
-								local empties = findempty()
-
-								if (name ~= "empty") then
-									if (#empties < unitcount[b]) and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								else
-									if (#empties < unitcount[b] + 1) and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								end
-							elseif (b == "level") then
-								allfound = -99
-								break
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not without") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-					local unitcount = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							if (unitcount[b] == nil) then
-								unitcount[b] = 0
-							end
-
-							unitcount[b] = unitcount[b] + 1
-						end
-
-						if (unitcount["level"] ~= nil) and (unitcount["level"] > 0) then
-							unitcount["level"] = unitcount["level"] - 1
-						end
-
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							if ((b ~= "level") and (b ~= "empty")) or ((b == "level") and (unitcount["level"] > 0)) then
-								if (pnot == false) then
-									if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-										local found = false
-
-										for c,d in ipairs(unitlists[b]) do
-											if (d ~= unitid) and (alreadyfound[d] == nil) then
-												alreadyfound[d] = 1
-												found = true
-												break
-											end
-										end
-
-										if found then
-											alreadyfound[bcode] = 1
-											allfound = allfound + 1
-										end
-									end
-								else
-									local found = false
-
-									for c,d in pairs(unitlists) do
-										if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") and (string.sub(c,1,5) ~= "text_") then
-											for e,f in ipairs(d) do
-												if (f ~= unitid) and (alreadyfound[f] == nil) then
-													alreadyfound[f] = 1
-													found = true
-													break
-												end
-											end
-										end
-
-										if found then
-											break
-										end
-									end
-
-									if found and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								end
-							elseif (b == "empty") then
-								local empties = findempty()
-
-								if (name ~= "empty") then
-									if (#empties >= unitcount[b]) and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								else
-									if (#empties >= unitcount[b] + 1) and (alreadyfound[bcode] == nil) then
-										alreadyfound[bcode] = 1
-										allfound = allfound + 1
-									end
-								end
-							elseif (b == "level") and (alreadyfound[bcode] == nil) then
-								alreadyfound[bcode] = 1
-								allfound = allfound + 1
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "below") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = (y - 1)
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (y > 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = x + (y - g) * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = x + (y - g) * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x,y - g)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "level") then
-									if (pnot == false) then
-										if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[pname]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														ulist = true
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-								end
-
-								if (b ~= "text") and (ulist == false) then
-									if (surrounds.u ~= nil) then
-										for c,d in ipairs(surrounds.u) do
-											if (pnot == false) then
-												if (ulist == false) and (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											else
-												if (ulist == false) and (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											end
-										end
-									end
-								end
-
-								if ulist or (b == "text") then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not below") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = (y - 1)
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (y > 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = x + (y - g) * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (d ~= unitid) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = x + (y - g) * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x,y - g)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if (p ~= "text") and (alreadyfound[bcode] == nil) then
-									if (surrounds.u ~= nil) then
-										for c,d in ipairs(surrounds.u) do
-											if (pnot == false) then
-												if (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "above") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = roomsizey - y - 2
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (dist >= 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = x + (y + g) * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = x + (y + g) * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x,y + g)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "level") then
-									if (pnot == false) then
-										if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[pname]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														ulist = true
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(unitlists[pname]) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-								end
-
-								if (b ~= "text") and (ulist == false) then
-									if (surrounds.d ~= nil) then
-										for c,d in ipairs(surrounds.d) do
-											if (pnot == false) then
-												if (ulist == false) and (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											else
-												if (ulist == false) and (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											end
-										end
-									end
-								end
-
-								if ulist or (b == "text") then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not above") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = roomsizey - y - 2
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (dist >= 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = x + (y + g) * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (d ~= unitid) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = x + (y + g) * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x,y + g)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													alreadyfound[bcode] = 1
-													alreadyfound[f] = 1
-													allfound = allfound + 1
-													tested = true
-													break
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if (p ~= "text") and (alreadyfound[bcode] == nil) then
-									if (surrounds.d ~= nil) then
-										for c,d in ipairs(surrounds.d) do
-											if (pnot == false) then
-												if (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "besideleft") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = roomsizex - x - 2
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (dist >= 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = (x + g) + y * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = (x + g) + y * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x + g,y)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "level") then
-									if (pnot == false) then
-										if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[pname]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														ulist = true
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(unitlists[pname]) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-								end
-
-								if (b ~= "text") and (ulist == false) then
-									if (surrounds.d ~= nil) then
-										for c,d in ipairs(surrounds.d) do
-											if (pnot == false) then
-												if (ulist == false) and (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											else
-												if (ulist == false) and (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											end
-										end
-									end
-								end
-
-								if ulist or (b == "text") then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not besideleft") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = roomsizex - x - 2
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (dist >= 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = (x + g) + y * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (d ~= unitid) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = (x + g) + y * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x + g,y)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													alreadyfound[bcode] = 1
-													alreadyfound[f] = 1
-													allfound = allfound + 1
-													tested = true
-													break
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if (p ~= "text") and (alreadyfound[bcode] == nil) then
-									if (surrounds.d ~= nil) then
-										for c,d in ipairs(surrounds.d) do
-											if (pnot == false) then
-												if (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "besideright") then
-					valid = true
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = (x - 1)
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (x > 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = (x - g) + y * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = (x - g) + y * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x - g,y)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "level") then
-									if (pnot == false) then
-										if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[pname]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													ulist = true
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														ulist = true
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												ulist = true
-												break
-											end
-										end
-									end
-								end
-
-								if (b ~= "text") and (ulist == false) then
-									if (surrounds.u ~= nil) then
-										for c,d in ipairs(surrounds.u) do
-											if (pnot == false) then
-												if (ulist == false) and (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											else
-												if (ulist == false) and (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													ulist = true
-												end
-											end
-										end
-									end
-								end
-
-								if ulist or (b == "text") then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not besideright") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (string.sub(pname, 1, 5) == "group") then
-								result = false
-								break
-							end
-
-							local dist = (x - 1)
-
-							if (unitid ~= 1) then
-								if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
-									if (x > 1) then
-										for g=1,dist do
-											if (pname ~= "empty") then
-												local tileid = (x - g) + y * roomsizex
-												if (unitmap[tileid] ~= nil) then
-													for c,d in ipairs(unitmap[tileid]) do
-														if (d ~= unitid) and (alreadyfound[d] == nil) then
-															local unit = mmf.newObject(d)
-															local name_ = getname(unit,pname,pnot)
-
-															if (pnot == false) then
-																if (name_ == pname) and (d ~= unitid) and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															else
-																if (name_ ~= pname) and (d ~= unitid) and (name_ ~= "text") and (alreadyfound[bcode] == nil) then
-																	alreadyfound[bcode] = 1
-																	alreadyfound[d] = 1
-																	allfound = allfound + 1
-																end
-															end
-														end
-													end
-												end
-											else
-												local nearempty = false
-
-												local tileid = (x - g) + y * roomsizex
-												local l = map[0]
-												local tile = l:get_x(x - g,y)
-
-												local tcode = tostring(tileid) .. "e"
-
-												if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
-													nearempty = true
-												end
-
-												if (pnot == false) then
-													if nearempty and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												else
-													if (nearempty == false) and (alreadyfound[bcode] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[tcode] = 1
-														allfound = allfound + 1
-													end
-												end
-											end
-										end
-									end
-								elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
-									alreadyfound[bcode] = 1
-									alreadyfound[1] = 1
-									allfound = allfound + 1
-								end
-							else
-								local ulist = false
-
-								if (b ~= "empty") and (b ~= "text") then
-									if (pnot == false) then
-										if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
-											for c,d in ipairs(unitlists[b]) do
-												if (alreadyfound[d] == nil) then
-													alreadyfound[bcode] = 1
-													alreadyfound[d] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										end
-									else
-										for c,d in pairs(unitlists) do
-											local tested = false
-
-											if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
-												for e,f in ipairs(d) do
-													if (alreadyfound[f] == nil) then
-														alreadyfound[bcode] = 1
-														alreadyfound[f] = 1
-														allfound = allfound + 1
-														tested = true
-														break
-													end
-												end
-											end
-
-											if tested then
-												break
-											end
-										end
-									end
-								elseif (b == "empty") then
-									local empties = findempty()
-
-									if (#empties > 0) and (alreadyfound[bcode] == nil) then
-										for c,d in ipairs(empties) do
-											if (alreadyfound[d] == nil) then
-												alreadyfound[bcode] = 1
-												alreadyfound[d] = 1
-												allfound = allfound + 1
-												break
-											end
-										end
-									end
-								elseif (b == "text") and (alreadyfound[bcode] == nil) then
-									alreadyfound[bcode] = 1
-									allfound = allfound + 1
-								end
-
-								if (p ~= "text") and (alreadyfound[bcode] == nil) then
-									if (surrounds.u ~= nil) then
-										for c,d in ipairs(surrounds.u) do
-											if (pnot == false) then
-												if (d == pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											else
-												if (d ~= pname) and (alreadyfound[bcode] == nil) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						print("no parameters given!")
-						result = false
-					end
-
-					if (allfound == #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "feeling") then
-					valid = true
-
-					local allfound = 0
-					local alreadyfound = {}
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (featureindex[name] ~= nil) then
-								for c,d in ipairs(featureindex[name]) do
-									local drule = d[1]
-									local dconds = d[2]
-
-									if (checkedconds[tostring(dconds)] == nil) then
-										if (pnot == false) then
-											if (drule[1] == name) and (drule[2] == "is") and (drule[3] == b) then
-												checkedconds[tostring(dconds)] = 1
-
-												if (alreadyfound[bcode] == nil) and testcond(dconds,unitid,x,y,nil,limit,checkedconds) then
-													alreadyfound[bcode] = 1
-													allfound = allfound + 1
-													break
-												end
-											end
-										else
-											if (string.sub(drule[3], 1, 4) ~= "not ") then
-												local obj = unitreference["text_" .. drule[3]]
-
-												if (obj ~= nil) then
-													local objtype = getactualdata_objlist(obj,"type")
-
-													if (objtype == 2) then
-														if (drule[1] == name) and (drule[2] == "is") and (drule[3] ~= pname) then
-															checkedconds[tostring(dconds)] = 1
-
-															if (alreadyfound[bcode] == nil) and testcond(dconds,unitid,x,y,nil,limit,checkedconds) then
-																alreadyfound[bcode] = 1
-																allfound = allfound + 1
-																break
-															end
-														end
-													end
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						result = false
-					end
-
-					if (allfound ~= #params) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not feeling") then
-					valid = true
-					local failure = false
-
-					if (#params > 0) then
-						for a,b in ipairs(params) do
-							local pname = b
-							local pnot = false
-							if (string.sub(b, 1, 4) == "not ") then
-								pnot = true
-								pname = string.sub(b, 5)
-							end
-
-							local bcode = b .. "_" .. tostring(a)
-
-							if (featureindex[name] ~= nil) and (failure == false) then
-								for c,d in ipairs(featureindex[name]) do
-									local drule = d[1]
-									local dconds = d[2]
-
-									if (checkedconds[tostring(dconds)] == nil) then
-										if (pnot == false) then
-											if (drule[1] == name) and (drule[2] == "is") and (drule[3] == b) then
-												checkedconds[tostring(dconds)] = 1
-
-												if testcond(dconds,unitid,x,y,nil,limit,checkedconds) then
-													failure = true
-													break
-												end
-											end
-										else
-											if (string.sub(drule[3], 1, 4) ~= "not ") then
-												local obj = unitreference["text_" .. drule[3]]
-
-												if (obj ~= nil) then
-													local objtype = getactualdata_objlist(obj,"type")
-
-													if (objtype == 2) then
-														if (drule[1] == name) and (drule[2] == "is") and (drule[3] ~= pname) then
-															checkedconds[tostring(dconds)] = 1
-
-															if testcond(dconds,unitid,x,y,nil,limit,checkedconds) then
-																failure = true
-																break
-															end
-														end
-													end
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					else
-						result = false
-					end
-
-					if failure then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "lonely") then
-					valid = true
-					local failure = false
-
-					if (unitid ~= 1) then
-						local tileid = x + y * roomsizex
-						if (unitmap[tileid] ~= nil) then
-							for c,d in ipairs(unitmap[tileid]) do
-								if (d ~= unitid) then
-									failure = true
-									break
-								end
-							end
-						end
-					else
-						failure = true
-					end
-
-					if failure then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not lonely") then
-					valid = true
-					local failure = false
-
-					if (unitid ~= 1) and (unitid ~= 2) then
-						local tileid = x + y * roomsizex
-						if (unitmap[tileid] ~= nil) then
-							if (#unitmap[tileid] == 1) then
-								failure = true
-							end
-						end
-					elseif (unitid == 2) then
-						failure = true
-					end
-
-					if failure then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "idle") then
-					valid = true
-
-					if (last_key ~= 4) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not idle") then
-					valid = true
-
-					if (last_key == 4) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif powercond and (notcond == false) then
-					valid = true
-					local found = false
-
-					local fullname = "power" .. powername
-
-					if (featureindex[fullname] ~= nil) then
-						for c,d in ipairs(featureindex[fullname]) do
-							local drule = d[1]
-							local dconds = d[2]
-
-							if (checkedconds[tostring(dconds)] == nil) then
-								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == fullname) then
-									if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") then
-										if (unitlists[drule[1]] ~= nil) then
-											checkedconds[tostring(dconds)] = 1
-
-											for e,f in ipairs(unitlists[drule[1]]) do
-												if testcond(dconds,f,x,y,nil,limit,checkedconds) then
-													found = true
-													break
-												end
-											end
-										end
-									elseif (drule[1] == "empty") then
-										local empties = findempty(dconds,true)
-
-										if (#empties > 0) then
-											found = true
-										end
-									elseif (drule[1] == "level") and testcond(dconds,1,x,y,nil,limit,checkedconds) then
-										found = true
-									end
-								end
-							end
-
-							if found then
-								break
-							end
-						end
-					end
-
-					checkedconds = checkedconds_ or {[tostring(conds)] = 1}
-
-					if (found == false) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif powercond and notcond then
-					valid = true
-					local found = false
-
-					local fullname = "power" .. powername
-
-					if (featureindex[fullname] ~= nil) then
-						for c,d in ipairs(featureindex[fullname]) do
-							local drule = d[1]
-							local dconds = d[2]
-
-							if (checkedconds[tostring(dconds)] == nil) then
-								if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == fullname) then
-									if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") then
-										if (unitlists[drule[1]] ~= nil) then
-											checkedconds[tostring(dconds)] = 1
-
-											for e,f in ipairs(unitlists[drule[1]]) do
-												if testcond(dconds,f,x,y,nil,limit,checkedconds) then
-													found = true
-													break
-												end
-											end
-										end
-									elseif (drule[1] == "empty") then
-										local empties = findempty(dconds,true)
-
-										if (#empties > 0) then
-											found = true
-										end
-									elseif (drule[1] == "level") and testcond(dconds,1,x,y,nil,limit,checkedconds) then
-										found = true
-									end
-								end
-							end
-
-							if found then
-								break
-							end
-						end
-					end
-
-					checkedconds = checkedconds_ or {[tostring(conds)] = 1}
-
-					if found then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "seldom") then
-					valid = true
-
-					if (condstatus[tostring(conds)] == nil) then
-						condstatus[tostring(conds)] = {}
-					end
-
-					local rnd = fixedrandom(1,6)
-
-					local d = condstatus[tostring(conds)]
-					local id = "seldom" .. "_" .. tostring(i)
-
-					if (unitid ~= 2) then
-						id = id .. "_" .. tostring(unitid)
-					else
-						id = id .. "_" .. tostring(unitid) .. tostring(x) .. tostring(y)
-					end
-
-					if (d[id] ~= nil) then
-						rnd = d[id]
-					else
-						d[id] = rnd
-					end
-
-					if (rnd ~= 1) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not seldom") then
-					valid = true
-
-					if (condstatus[tostring(conds)] == nil) then
-						condstatus[tostring(conds)] = {}
-					end
-
-					local rnd = fixedrandom(1,6)
-
-					local d = condstatus[tostring(conds)]
-					local id = "seldom" .. "_" .. tostring(i)
-
-					if (unitid ~= 2) then
-						id = id .. "_" .. tostring(unitid)
-					else
-						id = id .. "_" .. tostring(unitid) .. tostring(x) .. tostring(y)
-					end
-
-					if (d[id] ~= nil) then
-						rnd = d[id]
-					else
-						d[id] = rnd
-					end
-
-					if (rnd == 1) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "often") then
-					valid = true
-
-					if (condstatus[tostring(conds)] == nil) then
-						condstatus[tostring(conds)] = {}
-					end
-
-					local rnd = fixedrandom(1,4)
-
-					local d = condstatus[tostring(conds)]
-					local id = "often" .. "_" .. tostring(i)
-
-					if (unitid ~= 2) then
-						id = id .. "_" .. tostring(unitid)
-					else
-						id = id .. "_" .. tostring(unitid) .. tostring(x) .. tostring(y)
-					end
-
-					if (d[id] ~= nil) then
-						rnd = d[id]
-					else
-						d[id] = rnd
-					end
-
-					if (rnd == 1) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
-				elseif (condtype == "not often") then
-					valid = true
-
-					if (condstatus[tostring(conds)] == nil) then
-						condstatus[tostring(conds)] = {}
-					end
-
-					local rnd = fixedrandom(1,4)
-
-					local d = condstatus[tostring(conds)]
-					local id = "often" .. "_" .. tostring(i)
-
-					if (unitid ~= 2) then
-						id = id .. "_" .. tostring(unitid)
-					else
-						id = id .. "_" .. tostring(unitid) .. tostring(x) .. tostring(y)
-					end
-
-					if (d[id] ~= nil) then
-						rnd = d[id]
-					else
-						d[id] = rnd
-					end
-
-					if (rnd ~= 1) then
-						if (orhandling == false) then
-							result = false
-							break
-						end
-					elseif orhandling then
-						orresult = true
-					end
+				else
+					MF_alert("condtype " .. tostring(condtype) .. " doesn't exist?")
+					result = false
+					break
 				end
 
 				if (string.sub(cond[1], -1) == ")") then
@@ -3992,3 +275,1643 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 	return result
 end
+
+--[[ Fix TEXT and NOT METATEXT parameters, fix WITHOUT and POWERED, and fix level surrounds.
+All modified to change getname calls and handle level surrounds, unless specified.]]
+condlist["on"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		local tileid = x + y * roomsizex
+
+		if (unitid ~= 2) then
+			if (#params > 0) then
+				for a,b in ipairs(params) do
+					local pname = b
+					local pnot = false
+					if (string.sub(b, 1, 4) == "not ") then
+						pnot = true
+						pname = string.sub(b, 5)
+					end
+
+					local bcode = b .. "_" .. tostring(a)
+
+					if (string.sub(pname, 1, 5) == "group") then
+						return false,checkedconds
+					end
+
+					if (unitid ~= 1) then
+						if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
+							if (unitmap[tileid] ~= nil) then
+								for c,d in ipairs(unitmap[tileid]) do
+									if (d ~= unitid) and (alreadyfound[d] == nil) then
+										local unit = mmf.newObject(d)
+										local name_ = getname(unit,pname,pnot)
+
+										if (pnot == false) then
+											if (name_ == pname) and (alreadyfound[bcode] == nil) then
+												alreadyfound[bcode] = 1
+												alreadyfound[d] = 1
+												allfound = allfound + 1
+											end
+										else
+											if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+												alreadyfound[bcode] = 1
+												alreadyfound[d] = 1
+												allfound = allfound + 1
+											end
+										end
+									end
+								end
+							else
+								print("unitmap is nil at " .. tostring(x) .. ", " .. tostring(y) .. " for object " .. tostring(name) .. " (" .. tostring(unitid) .. ")!")
+							end
+						elseif (pname == "empty") then
+							if (pnot == false) then
+								return false,checkedconds
+							else
+								if (unitmap[tileid] ~= nil) then
+									for c,d in ipairs(unitmap[tileid]) do
+										if (d ~= unitid) and (alreadyfound[d] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[d] = 1
+											allfound = allfound + 1
+										end
+									end
+								end
+							end
+						elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+							alreadyfound[bcode] = 1
+							alreadyfound[1] = 1
+							allfound = allfound + 1
+						end
+					else
+						local ulist = false
+
+						if (b ~= "empty") and (b ~= "level") then
+							if (pnot == false) then
+								if (unitlists[b] ~= nil) and (#unitlists[b] > 0) and (alreadyfound[bcode] == nil) then
+									for c,d in ipairs(unitlists[b]) do
+										if (alreadyfound[d] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[d] = 1
+											ulist = true
+											break
+										end
+									end
+								end
+							else
+								for c,d in pairs(unitlists) do
+									local tested = false
+
+									if (c ~= pname) and (#d > 0) then
+										for e,f in ipairs(d) do
+											if (alreadyfound[f] == nil) and (alreadyfound[bcode] == nil) then
+												alreadyfound[bcode] = 1
+												alreadyfound[f] = 1
+												ulist = true
+												tested = true
+												break
+											end
+										end
+									end
+
+									if tested then
+										break
+									end
+								end
+							end
+						elseif (b == "empty") then
+							local empties = findempty()
+
+							if (#empties > 0) then
+								for c,d in ipairs(empties) do
+									if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						elseif (b == "level") then
+							for c,unit in ipairs(units) do
+								if (unit.className == "level") and (alreadyfound[unit.fixed] == nil) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[unit.fixed] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+
+						if (b ~= "text") and (ulist == false) then
+							if (surrounds["o"] ~= nil) then
+								for c,d in ipairs(surrounds["o"]) do
+									if (pnot == false) then
+										if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											ulist = true
+										end
+									else
+										if (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											ulist = true
+										end
+									end
+								end
+							end
+						end
+
+						if ulist or (b == "text") then
+							alreadyfound[bcode] = 1
+							allfound = allfound + 1
+						end
+					end
+				end
+			else
+				print("no parameters given!")
+				return false,checkedconds
+			end
+		else
+			for a,b in ipairs(params) do
+				local bcode = b .. "_" .. tostring(a)
+
+				if (b == "level") and (alreadyfound[bcode] == nil) then
+					alreadyfound[bcode] = 1
+					allfound = allfound + 1
+				else
+					return false,checkedconds
+				end
+			end
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["near"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				if (unitid ~= 1) then
+					if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						for g=-1,1 do
+							for h=-1,1 do
+								if (pname ~= "empty") then
+									local tileid = (x + g) + (y + h) * roomsizex
+									if (unitmap[tileid] ~= nil) then
+										for c,d in ipairs(unitmap[tileid]) do
+											if (d ~= unitid) and (alreadyfound[d] == nil) then
+												local unit = mmf.newObject(d)
+												local name_ = getname(unit,pname,pnot)
+
+												if (pnot == false) then
+													if (name_ == pname) and (alreadyfound[bcode] == nil) then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												else
+													if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												end
+											end
+										end
+									end
+								else
+									local nearempty = false
+
+									local tileid = (x + g) + (y + h) * roomsizex
+									local l = map[0]
+									local tile = l:get_x(x + g,y + h)
+
+									local tcode = tostring(tileid) .. "e"
+
+									if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
+										nearempty = true
+									end
+
+									if (g == 0) and (h == 0) then
+										if (unitid == 2) then
+											if (pnot == false) then
+												nearempty = false
+											end
+										elseif (unitid ~= 1) and pnot then
+											if (unitmap[tileid] == nil) or (#unitmap[tileid] <= 1) then
+												nearempty = true
+											end
+										end
+									end
+
+									if (pnot == false) then
+										if nearempty and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									else
+										if (nearempty == false) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local ulist = false
+
+					if (b ~= "empty") and (b ~= "level") then
+						if (pnot == false) then
+							if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) then
+								for c,d in ipairs(unitlists[pname]) do
+									if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						else
+							for c,d in pairs(unitlists) do
+								local tested = false
+
+								if (c ~= pname) and (#d > 0) then
+									for e,f in ipairs(d) do
+										if (alreadyfound[f] == nil) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[f] = 1
+											ulist = true
+											tested = true
+											break
+										end
+									end
+								end
+
+								if tested then
+									break
+								end
+							end
+						end
+					elseif (b == "empty") then
+						local empties = findempty()
+
+						if (#empties > 0) then
+							for c,d in ipairs(empties) do
+								if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[d] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+					end
+
+					if (b ~= "text") and (ulist == false) then
+						for e,f in pairs(surrounds) do
+							if (e ~= "dir") then
+								for c,d in ipairs(f) do
+									if (pnot == false) then
+										if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											ulist = true
+										end
+									else
+										if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											ulist = true
+										end
+									end
+								end
+							end
+						end
+					end
+
+					if ulist or (b == "text") then
+						alreadyfound[bcode] = 1
+						allfound = allfound + 1
+					end
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["nextto"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				if (unitid ~= 1) then
+					if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						for g=-1,1 do
+							for h=-1,1 do
+								if ((h ~= 0) and (g == 0)) or ((h == 0) and (g ~= 0)) then
+									if (pname ~= "empty") then
+										local tileid = (x + g) + (y + h) * roomsizex
+										if (unitmap[tileid] ~= nil) then
+											for c,d in ipairs(unitmap[tileid]) do
+												if (d ~= unitid) and (alreadyfound[d] == nil) then
+													local unit = mmf.newObject(d)
+													local name_ = getname(unit,pname,pnot)
+
+													if (pnot == false) then
+														if (name_ == pname) and (alreadyfound[bcode] == nil) then
+															alreadyfound[bcode] = 1
+															alreadyfound[d] = 1
+															allfound = allfound + 1
+														end
+													else
+														if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+															alreadyfound[bcode] = 1
+															alreadyfound[d] = 1
+															allfound = allfound + 1
+														end
+													end
+												end
+											end
+										end
+									else
+										local nearempty = false
+
+										local tileid = (x + g) + (y + h) * roomsizex
+										local l = map[0]
+										local tile = l:get_x(x + g,y + h)
+
+										local tcode = tostring(tileid) .. "e"
+
+										if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
+											nearempty = true
+										end
+
+										if (g == 0) and (h == 0) then
+											if (unitid == 2) then
+												if (pnot == false) then
+													nearempty = false
+												end
+											elseif (unitid ~= 1) and pnot then
+												if (unitmap[tileid] == nil) or (#unitmap[tileid] <= 1) then
+													nearempty = true
+												end
+											end
+										end
+
+										if (pnot == false) then
+											if nearempty and (alreadyfound[bcode] == nil) then
+												alreadyfound[bcode] = 1
+												alreadyfound[tcode] = 1
+												allfound = allfound + 1
+											end
+										else
+											if (nearempty == false) and (alreadyfound[bcode] == nil) then
+												alreadyfound[bcode] = 1
+												alreadyfound[tcode] = 1
+												allfound = allfound + 1
+											end
+										end
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local ulist = false
+
+					if (b ~= "empty") and (b ~= "level") then
+						if (pnot == false) then
+							if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) then
+								for c,d in ipairs(unitlists[pname]) do
+									if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						else
+							for c,d in pairs(unitlists) do
+								local tested = false
+
+								if (c ~= pname) and (#d > 0) then
+									for e,f in ipairs(d) do
+										if (alreadyfound[f] == nil) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[f] = 1
+											ulist = true
+											tested = true
+											break
+										end
+									end
+								end
+
+								if tested then
+									break
+								end
+							end
+						end
+					elseif (b == "empty") then
+						local empties = findempty()
+
+						if (#empties > 0) then
+							for c,d in ipairs(empties) do
+								if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[d] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+					end
+
+					if (b ~= "text") and (ulist == false) then
+						for e,f in pairs(surrounds) do
+							if (e ~= "dir") and (e ~= "o") then
+								for c,d in ipairs(f) do
+									if (pnot == false) then
+										if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											ulist = true
+										end
+									else
+										if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											ulist = true
+										end
+									end
+								end
+							end
+						end
+					end
+
+					if ulist or (b == "text") then
+						alreadyfound[bcode] = 1
+						allfound = allfound + 1
+					end
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["facing"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+
+		local unitid,x,y,dir,extras,surrounds,conds = cdata.unitid,cdata.x,cdata.y,cdata.dir,cdata.extras,cdata.surrounds,cdata.conds
+
+		if (unitid == 2) and ((checkedconds_ == nil) or (checkedconds_[conds] == nil)) then
+			dir = emptydir(x,y,checkedconds)
+		end
+
+		local ndrs = ndirs[dir+1]
+		local ox = ndrs[1]
+		local oy = ndrs[2]
+
+		local tileid = (x + ox) + (y + oy) * roomsizex
+
+		if (#params > 0) and (dir ~= 4) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				if (unitid ~= 1) then
+					if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						if (stringintable(pname, extras) == false) then
+							if (unitmap[tileid] ~= nil) then
+								for c,d in ipairs(unitmap[tileid]) do
+									if (d ~= unitid) and (alreadyfound[d] == nil) then
+										local unit = mmf.newObject(d)
+										local name_ = getname(unit,pname,pnot)
+
+										if (pnot == false) then
+											if (name_ == pname) and (alreadyfound[bcode] == nil) then
+												alreadyfound[bcode] = 1
+												alreadyfound[d] = 1
+												allfound = allfound + 1
+											end
+										else
+											if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+												alreadyfound[bcode] = 1
+												alreadyfound[d] = 1
+												allfound = allfound + 1
+											end
+										end
+									end
+								end
+							end
+						else
+							if (pnot == false) then
+								if ((pname == "right") and (dir == 0)) or ((pname == "up") and (dir == 1)) or ((pname == "left") and (dir == 2)) or ((pname == "down") and (dir == 3)) then
+									if (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										allfound = allfound + 1
+									end
+								end
+							else
+								if ((pname == "right") and (dir ~= 0)) or ((pname == "up") and (dir ~= 1)) or ((pname == "left") and (dir ~= 2)) or ((pname == "down") and (dir ~= 3)) then
+									if (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										allfound = allfound + 1
+									end
+								end
+							end
+						end
+					elseif (pname == "empty") then
+						local l = map[0]
+						local tile = l:get_x(x + ox,y + oy)
+
+						if (pnot == false) then
+							if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) then
+								if (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							end
+						else
+							if ((unitmap[tileid] ~= nil) and (#unitmap[tileid] > 0)) or (tile ~= 255) then
+								if (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local dirids = {"r","u","l","d"}
+					local dirid = dirids[dir + 1]
+
+					if (surrounds[dirid] ~= nil) then
+						for c,d in ipairs(surrounds[dirid]) do
+							if (pnot == false) then
+								if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							else
+								if (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							end
+						end
+					end
+				end
+			end
+		else
+			--print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["seeing"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+		local targets = {}
+
+		local unitid,x,y,dir,conds,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.dir,cdata.conds,cdata.surrounds
+
+		if (unitid == 2) then
+			dir = emptydir(x,y)
+		end
+
+		local ndrs = ndirs[dir+1]
+		local ox = ndrs[1]
+		local oy = ndrs[2]
+
+		local nx,ny = x,y
+		local tileid = (x + ox) + (y + oy) * roomsizex
+		local solid = 0
+
+		if (checkedconds_ ~= nil) and (checkedconds_[tostring(conds) .. "_s_"] ~= nil) then
+			return false,checkedconds
+		end
+
+		if (#params > 0) and (dir ~= 4) then
+			while (solid == 0) and inbounds(nx,ny,1) do
+				nx = nx + ox
+				ny = ny + oy
+
+				tileid = nx + ny * roomsizex
+
+				if inbounds(nx,ny,1) then
+					if (unitmap[tileid] ~= nil) then
+						if (#unitmap[tileid] > 0) then
+							local detected = false
+
+							for a,b in ipairs(unitmap[tileid]) do
+								local unit = mmf.newObject(b)
+								local name_ = getname(unit,pname,pnot)
+
+								if (hasfeature(name_,"is","hide",b,nx,ny,checkedconds) == nil) then
+									table.insert(targets, {b, name_})
+									detected = true
+								end
+							end
+
+							if (detected == false) then
+								table.insert(targets, {2, "empty"})
+							end
+						else
+							table.insert(targets, {2, "empty"})
+						end
+					else
+						table.insert(targets, {2, "empty"})
+					end
+
+					solid = simplecheck(nx,ny,true,checkedconds)
+				else
+					solid = 1
+				end
+			end
+
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				if (unitid ~= 1) then
+					if ((pname ~= "empty") and (b ~= "level")) or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						for c,d_ in ipairs(targets) do
+							local d = d_[1]
+
+							if (d ~= unitid) and (alreadyfound[d] == nil) and (d ~= 2) then
+								local name_ = d_[2]
+
+								if (pnot == false) then
+									if (name_ == pname) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										allfound = allfound + 1
+									end
+								else
+									if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										allfound = allfound + 1
+									end
+								end
+							end
+						end
+					elseif (pname == "empty") then
+						for c,d_ in ipairs(targets) do
+							local d = d_[1]
+
+							if (d == 2) then
+								if (pnot == false) then
+									if (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										allfound = allfound + 1
+									end
+								else
+									if (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										allfound = allfound + 1
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local dirids = {"r","u","l","d"}
+					local dirid = dirids[dir + 1]
+
+					if (surrounds[dirid] ~= nil) then
+						for c,d in ipairs(surrounds[dirid]) do
+							if (pnot == false) then
+								if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							else
+								if (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							end
+						end
+					end
+				end
+			end
+		elseif (#params == 0) then
+			print("no parameters given!")
+			return false,checkedconds
+		else
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To correctly handle WIHOUT NOT X
+		local allfound = 0
+		local alreadyfound = {}
+		local unitcount = {}
+
+		local name = cdata.name
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				if (unitcount[b] == nil) then
+					unitcount[b] = 0
+				end
+
+				unitcount[b] = unitcount[b] + 1
+			end
+
+			if (unitcount["level"] ~= nil) and (unitcount["level"] > 0) then
+				unitcount["level"] = unitcount["level"] - 1
+			end
+
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				if ((b ~= "level") and (b ~= "empty")) or ((b == "level") and (unitcount["level"] > 0)) then
+					if (pnot == false) then
+						if (alreadyfound[bcode] == nil) then
+							if (unitlists[b] == nil) or (#unitlists[b] == 0) and (alreadyfound[bcode] == nil) then
+								alreadyfound[bcode] = 1
+								allfound = allfound + 1
+							elseif (unitlists[b] ~= nil) and (#unitlists[b] > 0) then
+								local found = false
+
+								if (b ~= name) or (b == "text" and string.sub(name,1,5) == "text_") then
+									if (#unitlists[b] < unitcount[b]) then
+										found = true
+									end
+								else
+									if (#unitlists[b] < unitcount[b] + 1) then
+										found = true
+									end
+								end
+
+								if found then
+									alreadyfound[bcode] = 1
+									allfound = allfound + 1
+								end
+							end
+						end
+					else
+						local foundunits = 0
+
+						for c,d in pairs(unitlists) do
+							if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") and (string.sub(c,1,5) ~= "text_") then
+								for e,f in ipairs(d) do
+									if (f ~= unitid) and (alreadyfound[f] == nil) then
+										alreadyfound[f] = 1
+										foundunits = foundunits + 1
+
+										if (foundunits >= unitcount[b]) then
+											break
+										end
+									end
+								end
+							end
+
+							if (foundunits >= unitcount[b]) then
+								break
+							end
+						end
+
+						if (foundunits < unitcount[b]) and (alreadyfound[bcode] == nil) then
+							alreadyfound[bcode] = 1
+							allfound = allfound + 1
+						end
+					end
+				elseif (b == "empty") then
+					local empties = findempty()
+
+					if (name ~= "empty") then
+						if (#empties < unitcount[b]) and (alreadyfound[bcode] == nil) then
+							alreadyfound[bcode] = 1
+							allfound = allfound + 1
+						end
+					else
+						if (#empties < unitcount[b] + 1) and (alreadyfound[bcode] == nil) then
+							alreadyfound[bcode] = 1
+							allfound = allfound + 1
+						end
+					end
+				elseif (b == "level") then
+					allfound = -99
+					break
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["above"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				local dist = roomsizey - y - 2
+
+				if (unitid ~= 1) then
+					if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						if (dist >= 1) then
+							for g=1,dist do
+								if (pname ~= "empty") then
+									local tileid = x + (y + g) * roomsizex
+									if (unitmap[tileid] ~= nil) then
+										for c,d in ipairs(unitmap[tileid]) do
+											if (d ~= unitid) and (alreadyfound[d] == nil) then
+												local unit = mmf.newObject(d)
+												local name_ = getname(unit,pname,pnot)
+
+												if (pnot == false) then
+													if (name_ == pname) and (alreadyfound[bcode] == nil) then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												else
+													if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												end
+											end
+										end
+									end
+								else
+									local nearempty = false
+
+									local tileid = x + (y + g) * roomsizex
+									local l = map[0]
+									local tile = l:get_x(x,y + g)
+
+									local tcode = tostring(tileid) .. "e"
+
+									if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
+										nearempty = true
+									end
+
+									if (pnot == false) then
+										if nearempty and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									else
+										if (nearempty == false) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local ulist = false
+
+					if (b ~= "empty") and (b ~= "level") then
+						if (pnot == false) then
+							if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
+								for c,d in ipairs(unitlists[pname]) do
+									if (alreadyfound[d] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						else
+							for c,d in pairs(unitlists) do
+								local tested = false
+
+								if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
+									for e,f in ipairs(d) do
+										if (alreadyfound[f] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[f] = 1
+											ulist = true
+											tested = true
+											break
+										end
+									end
+								end
+
+								if tested then
+									break
+								end
+							end
+						end
+					elseif (b == "empty") then
+						local empties = findempty()
+
+						if (#empties > 0) and (alreadyfound[bcode] == nil) then
+							for c,d in ipairs(unitlists[pname]) do
+								if (alreadyfound[d] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[d] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+					end
+
+					if (b ~= "text") and (ulist == false) then
+						if (surrounds.d ~= nil) then
+							for c,d in ipairs(surrounds.d) do
+								if (pnot == false) then
+									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								else
+									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								end
+							end
+						end
+					end
+
+					if ulist or (b == "text") then
+						alreadyfound[bcode] = 1
+						allfound = allfound + 1
+					end
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["below"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				local dist = (y - 1)
+
+				if (unitid ~= 1) then
+					if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						if (y > 1) then
+							for g=1,dist do
+								if (pname ~= "empty") then
+									local tileid = x + (y - g) * roomsizex
+									if (unitmap[tileid] ~= nil) then
+										for c,d in ipairs(unitmap[tileid]) do
+											if (d ~= unitid) and (alreadyfound[d] == nil) then
+												local unit = mmf.newObject(d)
+												local name_ = getname(unit,pname,pnot)
+
+												if (pnot == false) then
+													if (name_ == pname) and (alreadyfound[bcode] == nil) then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												else
+													if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												end
+											end
+										end
+									end
+								else
+									local nearempty = false
+
+									local tileid = x + (y - g) * roomsizex
+									local l = map[0]
+									local tile = l:get_x(x,y - g)
+
+									local tcode = tostring(tileid) .. "e"
+
+									if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
+										nearempty = true
+									end
+
+									if (pnot == false) then
+										if nearempty and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									else
+										if (nearempty == false) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local ulist = false
+
+					if (b ~= "empty") and (b ~= "level") then
+						if (pnot == false) then
+							if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
+								for c,d in ipairs(unitlists[pname]) do
+									if (alreadyfound[d] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						else
+							for c,d in pairs(unitlists) do
+								local tested = false
+
+								if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
+									for e,f in ipairs(d) do
+										if (alreadyfound[f] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[f] = 1
+											ulist = true
+											tested = true
+											break
+										end
+									end
+								end
+
+								if tested then
+									break
+								end
+							end
+						end
+					elseif (b == "empty") then
+						local empties = findempty()
+
+						if (#empties > 0) then
+							for c,d in ipairs(empties) do
+								if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[d] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+					end
+
+					if (b ~= "text") and (ulist == false) then
+						if (surrounds.u ~= nil) then
+							for c,d in ipairs(surrounds.u) do
+								if (pnot == false) then
+									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								else
+									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								end
+							end
+						end
+					end
+
+					if ulist or (b == "text") then
+						alreadyfound[bcode] = 1
+						allfound = allfound + 1
+					end
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["besideright"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				local dist = (x - 1)
+
+				if (unitid ~= 1) then
+					if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						if (x > 1) then
+							for g=1,dist do
+								if (pname ~= "empty") then
+									local tileid = (x - g) + y * roomsizex
+									if (unitmap[tileid] ~= nil) then
+										for c,d in ipairs(unitmap[tileid]) do
+											if (d ~= unitid) and (alreadyfound[d] == nil) then
+												local unit = mmf.newObject(d)
+												local name_ = getname(unit,pname,pnot)
+
+												if (pnot == false) then
+													if (name_ == pname) and (alreadyfound[bcode] == nil) then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												else
+													if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												end
+											end
+										end
+									end
+								else
+									local nearempty = false
+
+									local tileid = (x - g) + y * roomsizex
+									local l = map[0]
+									local tile = l:get_x(x - g,y)
+
+									local tcode = tostring(tileid) .. "e"
+
+									if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (tile == 255) and (alreadyfound[tcode] == nil) then
+										nearempty = true
+									end
+
+									if (pnot == false) then
+										if nearempty and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									else
+										if (nearempty == false) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local ulist = false
+
+					if (b ~= "empty") and (b ~= "level") then
+						if (pnot == false) then
+							if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
+								for c,d in ipairs(unitlists[pname]) do
+									if (alreadyfound[d] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						else
+							for c,d in pairs(unitlists) do
+								local tested = false
+
+								if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
+									for e,f in ipairs(d) do
+										if (alreadyfound[f] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[f] = 1
+											ulist = true
+											tested = true
+											break
+										end
+									end
+								end
+
+								if tested then
+									break
+								end
+							end
+						end
+					elseif (b == "empty") then
+						local empties = findempty()
+
+						if (#empties > 0) then
+							for c,d in ipairs(empties) do
+								if (alreadyfound[d] == nil) and (alreadyfound[bcode] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[d] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+					end
+
+					if (b ~= "text") and (ulist == false) then
+						if (surrounds.l ~= nil) then
+							for c,d in ipairs(surrounds.l) do
+								if (pnot == false) then
+									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								else
+									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								end
+							end
+						end
+					end
+
+					if ulist or (b == "text") then
+						alreadyfound[bcode] = 1
+						allfound = allfound + 1
+					end
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["besideleft"] = function(params,checkedconds,checkedconds_,cdata)
+		local allfound = 0
+		local alreadyfound = {}
+		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
+
+		if (#params > 0) then
+			for a,b in ipairs(params) do
+				local pname = b
+				local pnot = false
+				if (string.sub(b, 1, 4) == "not ") then
+					pnot = true
+					pname = string.sub(b, 5)
+				end
+
+				local bcode = b .. "_" .. tostring(a)
+
+				if (string.sub(pname, 1, 5) == "group") then
+					return false,checkedconds
+				end
+
+				local dist = roomsizex - x - 2
+
+				if (unitid ~= 1) then
+					if (b ~= "level") or ((b == "level") and (alreadyfound[1] ~= nil)) then
+						if (dist >= 1) then
+							for g=1,dist do
+								if (pname ~= "empty") then
+									local tileid = (x + g) + y * roomsizex
+									if (unitmap[tileid] ~= nil) then
+										for c,d in ipairs(unitmap[tileid]) do
+											if (d ~= unitid) and (alreadyfound[d] == nil) then
+												local unit = mmf.newObject(d)
+												local name_ = getname(unit,pname,pnot)
+
+												if (pnot == false) then
+													if (name_ == pname) and (alreadyfound[bcode] == nil) then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												else
+													if (name_ ~= pname) and (alreadyfound[bcode] == nil) and (name_ ~= "text") then
+														alreadyfound[bcode] = 1
+														alreadyfound[d] = 1
+														allfound = allfound + 1
+													end
+												end
+											end
+										end
+									end
+								else
+									local nearempty = false
+
+									local tileid = (x + g) + y * roomsizex
+									local l = map[0]
+									local tile = l:get_x(x + g,y)
+
+									local tcode = tostring(tileid) .. "e"
+
+									if ((unitmap[tileid] == nil) or (#unitmap[tileid] == 0)) and (alreadyfound[tcode] == nil) then
+										nearempty = true
+									end
+
+									if (pnot == false) then
+										if nearempty and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									else
+										if (nearempty == false) and (alreadyfound[bcode] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[tcode] = 1
+											allfound = allfound + 1
+										end
+									end
+								end
+							end
+						end
+					elseif (b == "level") and (alreadyfound[bcode] == nil) and (alreadyfound[1] == nil) then
+						alreadyfound[bcode] = 1
+						alreadyfound[1] = 1
+						allfound = allfound + 1
+					end
+				else
+					local ulist = false
+
+					if (b ~= "empty") and (b ~= "level") then
+						if (pnot == false) then
+							if (unitlists[pname] ~= nil) and (#unitlists[pname] > 0) and (alreadyfound[bcode] == nil) then
+								for c,d in ipairs(unitlists[pname]) do
+									if (alreadyfound[d] == nil) then
+										alreadyfound[bcode] = 1
+										alreadyfound[d] = 1
+										ulist = true
+										break
+									end
+								end
+							end
+						else
+							for c,d in pairs(unitlists) do
+								local tested = false
+
+								if (c ~= pname) and (#d > 0) and (alreadyfound[bcode] == nil) then
+									for e,f in ipairs(d) do
+										if (alreadyfound[f] == nil) then
+											alreadyfound[bcode] = 1
+											alreadyfound[f] = 1
+											ulist = true
+											tested = true
+											break
+										end
+									end
+								end
+
+								if tested then
+									break
+								end
+							end
+						end
+					elseif (b == "empty") then
+						local empties = findempty()
+
+						if (#empties > 0) and (alreadyfound[bcode] == nil) then
+							for c,d in ipairs(unitlists[pname]) do
+								if (alreadyfound[d] == nil) then
+									alreadyfound[bcode] = 1
+									alreadyfound[d] = 1
+									ulist = true
+									break
+								end
+							end
+						end
+					end
+
+					if (b ~= "text") and (ulist == false) then
+						if (surrounds.r ~= nil) then
+							for c,d in ipairs(surrounds.r) do
+								if (pnot == false) then
+									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								else
+									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										alreadyfound[bcode] = 1
+										ulist = true
+									end
+								end
+							end
+						end
+					end
+
+					if ulist or (b == "text") then
+						alreadyfound[bcode] = 1
+						allfound = allfound + 1
+					end
+				end
+			end
+		else
+			print("no parameters given!")
+			return false,checkedconds
+		end
+
+		return (allfound == #params),checkedconds
+	end
+condlist["powered"] = function(params,checkedconds,checkedconds_,cdata) --To correctly handle TEXT IS POWER
+		local found = false
+		local x,y,limit,subtype,conds = cdata.x,cdata.y,cdata.limit,cdata.subtype,cdata.conds
+		local fullname = "power" .. subtype
+
+		if (poweredstatus[fullname] ~= nil) then
+			found = poweredstatus[fullname]
+		elseif (featureindex[fullname] ~= nil) then
+			for c,d in ipairs(featureindex[fullname]) do
+				local drule = d[1]
+				local dconds = d[2]
+
+				if (checkedconds[tostring(dconds)] == nil) then
+					if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == fullname) then
+						if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") then
+							if (unitlists[drule[1]] ~= nil) then
+								checkedconds[tostring(dconds)] = 1
+
+								for e,f in ipairs(unitlists[drule[1]]) do
+									if testcond(dconds,f,x,y,nil,limit,checkedconds) then
+										found = true
+										break
+									end
+								end
+							end
+						elseif (drule[1] == "empty") then
+							local empties = findempty(dconds,true)
+
+							if (#empties > 0) then
+								found = true
+							end
+						elseif (drule[1] == "level") and testcond(dconds,1,x,y,nil,limit,checkedconds) then
+							found = true
+						end
+					end
+				end
+
+				if found then
+					break
+				end
+			end
+		end
+
+		checkedconds = checkedconds_ or {[tostring(conds)] = 1}
+
+		if (checkedconds_ == nil) and (poweredstatus[fullname] == nil) then
+			poweredstatus[fullname] = found
+		end
+
+		return found,checkedconds
+	end

@@ -31,7 +31,7 @@ Can only add up to 35 additional objects. REQUIRES metaunmeta.lua.
 Comes with the following options:
 0 disables this feature.
 1 tries to use the correct sprite, if it exists. Otherwise, it uses the default.
-2 is like trysprite, but if the sprite doesn't exist, it won't generate.
+2 is like 1, but if the sprite doesn't exist, it won't generate.
 Anything else always uses the default sprite. If you choose this, you're gonna want the overlay on.
 Note that if the nonexistant text is available in the editor object list, that will be referenced instead.]]
 
@@ -235,10 +235,10 @@ function formlettermap()
 			local dr = dirs[dir]
 			local ox,oy = dr[1],dr[2]
 
-			--[[
-			MF_debug(x,y,1)
-			MF_alert("In database: " .. v[1] .. ", dir " .. tostring(v[5]))
-			]]--
+      --[[
+      MF_debug(x,y,1)
+      MF_alert("In database: " .. v[1] .. ", dir " .. tostring(v[5]))
+      ]]--
 
 			local tileid = x + y * roomsizex
 
@@ -398,7 +398,7 @@ end
 
 -- Try to add more metatext if it doesn't exist.
 function tryautogenerate(want,tilename)
-  if metatext_autogenerate ~= "never" then
+  if metatext_autogenerate ~= 0 then
     if want == nil then
       local test = tilename
       local count = 0
@@ -421,6 +421,10 @@ function tryautogenerate(want,tilename)
     end
     if editor_objlist_reference[want] ~= nil then
       local data = editor_objlist[editor_objlist_reference[want]]
+      local root = data.sprite_in_root
+      if root == nil then
+        root = true
+      end
       local colour = data.colour
       local active = data.colour_active
       local colourasstring = colour[1] .. "," .. colour[2]
@@ -434,7 +438,7 @@ function tryautogenerate(want,tilename)
           0,
           "text",
           activeasstring,
-          data.sprite_in_root or true,
+          root,
           data.layer or 10,
           nil,
       }
@@ -456,35 +460,43 @@ function tryautogenerate(want,tilename)
       dochanges_full("object" .. target)
       objectpalette[want] = "object" .. target
       objectlist[want] = 1
-      fullunitlist[want] = 1
+      if root == true then
+        fullunitlist[want] = "fixroot" .. (data.sprite or data.name)
+      else
+        fullunitlist[want] = "fix" .. (data.sprite or data.name)
+      end
       return true
     else
       local realname = objectpalette[tilename]
+      local root = getactualdata_objlist(realname,"sprite_in_root")
       local colour = getactualdata_objlist(realname,"colour")
       local active = getactualdata_objlist(realname,"active")
       if colour == nil then
         return false
       end
+      local sprite = getactualdata_objlist(realname,"sprite",true) or getactualdata_objlist(realname,"name")
       local colourasstring = colour[1] .. "," .. colour[2]
       local activeasstring = active[1] .. "," .. active[2]
       local new =
       {
           want,
-          getactualdata_objlist(realname,"sprite",true) or getactualdata_objlist(realname,"name"),
+          sprite,
           colourasstring,
           getactualdata_objlist(realname,"tiling"),
           0,
           "text",
           activeasstring,
-          getactualdata_objlist(realname,"sprite_in_root"),
+          root,
           getactualdata_objlist(realname,"layer"),
           nil,
       }
-      if metatext_autogenerate == "trysprite" or metatext_autogenerate == "mustsprite" then
-        if MF_findsprite(want .. "_0_1.png",false) then
-          new[2] = want
-          new[8] = false
-        elseif metatext_autogenerate == "mustsprite" then
+      if metatext_autogenerate == 1 or metatext_autogenerate == 2 then
+        if MF_findsprite("text_"..sprite.."_0_1.png",false) then
+          sprite = "text_"..sprite
+          new[2] = sprite
+          root = false
+          new[8] = root
+        elseif metatext_autogenerate == 2 then
           return false
         end
       end
@@ -509,63 +521,16 @@ function tryautogenerate(want,tilename)
         dochanges_full("object" .. target)
         objectpalette[want] = "object" .. target
         objectlist[want] = 1
-        fullunitlist[want] = 1
+        if root == true then
+          fullunitlist[want] = "fixroot" .. sprite
+        else
+          fullunitlist[want] = "fix" .. sprite
+        end
         return true
       end
     end
   end
   return false
-end
-
---Based off of storechanges() ; removes level data saving
-function storechangeswithoutsave()
-	local changedobjects = ""
-	local changedobjects_short = ""
-	local changedobjectlist = {}
-	local changelimit = 600
-	local icons = {}
-
-	for target,this in pairs(changes) do
-		if (target == "Editor_levelnum") then
-			error("This shouldn't get called.")
-		else
-			changedobjects = changedobjects .. target .. ","
-			changedobjects_short = changedobjects_short .. string.sub(target, -3) .. ","
-
-			if (#changedobjects >= changelimit) then
-				table.insert(changedobjectlist, changedobjects)
-				changedobjects = ""
-			end
-		end
-	end
-
-	if (#changedobjects > 0) then
-		table.insert(changedobjectlist, changedobjects)
-		changedobjects = ""
-	end
-
-	for i=1,generaldata2.values[ICONCOUNT] do
-		if (icons[i] == nil) then
-			MF_store("level","icons",tostring(i - 1) .. "file","")
-			MF_store("level","icons",tostring(i - 1) .. "root","")
-		end
-	end
-
-	MF_store("level","tiles","changed_count",tostring(#changedobjectlist))
-
-	for i,v in ipairs(changedobjectlist) do
-		local id = "changed"
-
-		if (i > 1) then
-			id = id .. tostring(i)
-		end
-
-		MF_store("level","tiles",id,v)
-	end
-
-	editor.strings[CHANGEDOBJECTS] = changedobjects_short
-
-	MF_store("level","tiles","changed_short",changedobjects_short)
 end
 
 -- Allows metatext to be named in editor.

@@ -1,4 +1,4 @@
--- Implement FULLUNITLIST, and also add text units to "text" unitlist (for WITHOUT)
+-- Implement FULLUNITLIST, add text units to "text" unitlist (for WITHOUT), and fix sprites on auto generation.
 function addunit(id,undoing_)
 	local unitid = #units + 1
 
@@ -43,6 +43,15 @@ function addunit(id,undoing_)
 
 	if fullunitlist == nil then
 		fullunitlist = {}
+	elseif fullunitlist[name] ~= nil and string.sub(fullunitlist[name],1,3) == "fix" then
+		local root = false
+		local sprite = string.sub(fullunitlist[name],4)
+		if string.sub(fullunitlist[name],1,7) == "fixroot" then
+			root = true
+			sprite = string.sub(fullunitlist[name],8)
+		end
+		MF_changesprite(unit.fixed, sprite, root)
+		fullunitlist[name] = 1
 	end
 	if (unit.strings[UNITTYPE] ~= "text") or ((unit.strings[UNITTYPE] == "text") and (unit.values[TYPE] == 0)) then
 		objectlist[name_] = 1

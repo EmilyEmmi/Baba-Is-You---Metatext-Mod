@@ -266,7 +266,7 @@ function conversion(dolevels_)
         end
         tryautogenerate("text_" .. thing,lowestlevel)
       end
-			if (getmat(thing) ~= nil) or (thing == "not " .. name) or (thing == "all") or (unitreference[thing] ~= nil) or ((thing == "text") and (unitreference["text_text"] ~= nil)) or (thing == "revert") or (thing == "meta") or (thing == "unmeta") or ((operator == "write") and getmat_text("text_" .. name)) then
+			if (name ~= "text") and ((getmat(thing) ~= nil) or (thing == "not " .. name) or (thing == "all") or (unitreference[thing] ~= nil) or ((thing == "text") and (unitreference["text_text"] ~= nil)) or (thing == "revert") or (thing == "meta") or (thing == "unmeta") or ((operator == "write") and getmat_text("text_" .. name))) then
 				if (featureindex[name] ~= nil) and (alreadydone[name] == nil) then
 					alreadydone[name] = 1
 
@@ -319,8 +319,8 @@ function conversion(dolevels_)
 								--createall({name,conds})
 							elseif (object == "text") or (object == "meta") then
 								table.insert(conversions, {"text_" .. name,conds})
-                if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
-                  tryautogenerate(nil,string.sub(name,6))
+                if string.sub(name,1,5) == "text_" and unitreference["text_" .. name] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
+                  tryautogenerate("text_" .. name,name)
                 end
               elseif (object == "unmeta") and string.sub(name,1,5) == "text_" then
                 table.insert(conversions, {string.sub(name,6),conds})
