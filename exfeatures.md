@@ -85,5 +85,23 @@ That's everything as of now!
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ...?
 <img src="gifs/nothing.png" alt="png is not render :(" width="800"/>
