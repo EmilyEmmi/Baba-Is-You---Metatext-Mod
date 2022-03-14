@@ -78,30 +78,27 @@ Report any bugs you find with this, because this kind of thing has the capabilit
 Not telling you what this does, but you can disable it. YES by default.
 
 That's everything as of now!
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-...?
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+...?<br/>
 <img src="gifs/nothing.png" alt="png is not render :(" width="800"/>
