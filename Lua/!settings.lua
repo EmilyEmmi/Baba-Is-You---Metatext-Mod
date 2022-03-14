@@ -1,17 +1,7 @@
 --[[ This file is named this way to make sure it runs first.
 Obviously, this is ripping off- I mean, INSPIRED by Plasmaflare's.]]
-
-metatext_version = "460c" -- make sure this is lowercase
-
 -- Set up the settings.
 metatext_settings_list = {
-  give_warning = {
-    buttonfunc = "mtxt_warning", --The button func.
-    boolean = true, -- If the two values are True and False, set this to True.
-    default = false, -- The default value.
-    name = "Give warning if wrong version", -- Name that shows up in the menu.
-    tooltip = "Displays an error if the version of this mod does not match the game version.", --Tooltip.
-  },
   fix_quirks = {
     buttonfunc = "mtxt_quirks", --The button func.
     boolean = true, -- If the two values are True and False, set this to True.
@@ -89,7 +79,6 @@ metatext_settings_order = {
   "hasmake_nometa",
   "overlay_style",
   "auto_gen",
-  "give_warning",
   "easter_egg",
 }
 

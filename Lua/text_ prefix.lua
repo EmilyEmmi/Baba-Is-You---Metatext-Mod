@@ -143,9 +143,10 @@ function docode(firstwords)
 						local prevsafewordtype = 0
 
 						local stop = false
-						local prefix = ""
-						local tryasnoun = 0
-						local gottagoback = false
+
+						local prefix = "" --How many "text_"s are being used.
+						local tryasnoun = 0 --Which id we're going to use as type 0
+						local gottagoback = false --True if we need to restart parsing
 
 						local sent = sentences[i]
 						local sent_id = sent_ids[i]
@@ -188,22 +189,22 @@ function docode(firstwords)
 								8 = customobject
 							]]--
 
-							if tiletype == 4 and tilename == "text_" and tryasnoun ~= wordid then
-								if tryasnoun == 0 then
+							if tiletype == 4 and tilename == "text_" and tryasnoun ~= wordid then --text_ logic starts here
+								if tryasnoun == 0 then --If this is the first
 									if wordid + 1 <= #sent then
-										if stage ~= 3 then
+										if stage ~= 3 then --False after infix conditions and verbs
 											local phase = 0
-											for fwordid=wordid + 1,#sent do
-												if (sent[fwordid][2] ~= 4 or sent[fwordid][1] ~= "text_") or (phase == 1 and sent[fwordid][1] == "text_") then
-													if phase == 0 then
+											for fwordid=wordid + 1,#sent do --Now we start looking into the future
+												if (sent[fwordid][2] ~= 4 or sent[fwordid][1] ~= "text_") or (phase == 1 and sent[fwordid][1] == "text_") then --If this isn't a text_, unless we already encountered a noun.
+													if phase == 0 then --Move onto next phase if this is the first time
 														phase = 1
-													elseif (sent[fwordid][2] ~= 1 and sent[fwordid][2] ~= 6 and sent[fwordid][2] ~= 7) then
+													elseif (sent[fwordid][2] ~= 1 and sent[fwordid][2] ~= 6 and sent[fwordid][2] ~= 7 and sent[fwordid][2] ~= 4) then --Checks if this won't parse
 														break
-													else
+													else --stop
 														prefix = "text_" .. prefix
 														break
 													end
-												elseif phase == 0 then
+												elseif phase == 0 then --If we ran into a text_ first, we're gonna try it as a noun
 													tryasnoun = fwordid
 												end
 											end
@@ -243,9 +244,9 @@ function docode(firstwords)
 										end
 									end
 								else
-									prefix = "text_" .. prefix
+									prefix = "text_" .. prefix --stack
 								end
-							elseif prefix ~= "" then
+							elseif prefix ~= "" then --Parse this word as a noun
 								tiletype = 0
 								currtiletype = 0
 								tryasnoun = 0

@@ -1,8 +1,5 @@
 -- Use the in-game menu now.
 
-metatext_warning = get_setting("give_warning") --[[Gives error if compatible version does not match current game version. SET TO
-FALSE to disable.]]
-
 table.insert( mod_hook_functions["level_start"], function()
 
 metatext_fixquirks = get_setting("fix_quirks") --[[Set this to FALSE to:
@@ -682,16 +679,4 @@ function getunitverbtargets(rule2)
 	end
 
 	return result
-end
-
--- Gives warning upon load, if enabled
--- Make sure this is the last thing
-if metatext_warning then
-  if string.lower(metatext_version) ~= string.lower(MF_getversion()) then
-    if string.lower(metatext_version) > string.lower(MF_getversion()) then
-      error(string.format("\nYour game is too outdated to work with this version of the metatext mod.\n\nMetatext mod version: %s\nCurrent game version: %s\n\nYou can disable this error in the levelpack settings.",metatext_version,MF_getversion()),2)
-    else
-      error(string.format("\nThis version of the metatext mod is outdated.\n\nMetatext mod version: %s\nCurrent game version: %s\n\nYou can disable this error in the levelpack settings.",metatext_version,MF_getversion()),2)
-    end
-  end
 end

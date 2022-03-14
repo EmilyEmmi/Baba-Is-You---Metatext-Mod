@@ -1093,7 +1093,7 @@ condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To cor
 		local alreadyfound = {}
 		local unitcount = {}
 
-		local name = cdata.name
+		local name,notcond = cdata.name,cdata.notcond
 
 		if (#params > 0) then
 			for a,b in ipairs(params) do
@@ -1196,6 +1196,10 @@ condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To cor
 		else
 			print("no parameters given!")
 			return false,checkedconds
+		end
+
+		if notcond then
+			return (allfound > 0),checkedconds
 		end
 
 		return (allfound == #params),checkedconds
@@ -1866,7 +1870,7 @@ condlist["besideleft"] = function(params,checkedconds,checkedconds_,cdata)
 	end
 condlist["powered"] = function(params,checkedconds,checkedconds_,cdata) --To correctly handle TEXT IS POWER
 		local found = false
-		local x,y,limit,subtype,conds = cdata.x,cdata.y,cdata.limit,cdata.subtype,cdata.conds
+		local x,y,limit,subtype,conds = cdata.x,cdata.y,cdata.limit,cdata.subtype,tostring(cdata.conds)
 		local fullname = "power" .. subtype
 
 		if (poweredstatus[fullname] ~= nil) then

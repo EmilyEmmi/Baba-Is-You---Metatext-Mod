@@ -17,7 +17,6 @@ Note: Baba will not send a text message.
 These properties change the meta level of text/objects:
 - META raises the meta level. ROCK is changed to TEXT_ROCK, TEXT_ROCK is changed to TEXT_TEXT_ROCK, etc.
 - UNMETA lowers the meta level. TEXT_TEXT_ROCK becomes TEXT_ROCK and TEXT_ROCK becomes ROCK. Texts that don't have an associated object won't be changed.
-
 **These are considered transformations, so NOUN IS NOUN will disable them.**
 Simply don't omit the file "metaunmeta.lua" to get this word.
 
@@ -29,12 +28,6 @@ This lets you enable or disable certain features. It should appear in the top le
 
 This is saved with your levelpack, so when you send it, it should be ready to go!
 Here are the options available.
-
-# Give warning if wrong version.
-
-<img src="gifs/warn.gif" alt="gif is not render :(" width="400"/>
-
-This option displays an error if the version of the game does not the version of this mod. NO by default. Note that the player can still continue.
 
 # Fix issues with parity
 
@@ -85,3 +78,12 @@ Report any bugs you find with this, because this kind of thing has the capabilit
 Not telling you what this does, but you can disable it. YES by default.
 
 That's everything as of now!
+
+
+
+
+
+
+
+...?
+<img src="gifs/nothing.png" alt="png is not render :(" width="800"/>

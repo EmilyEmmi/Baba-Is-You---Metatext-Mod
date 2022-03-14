@@ -1639,7 +1639,7 @@ function findwordunits()
 			local name = rule[1]
 			local subid = ""
 
-			if (fullunitlist[name] ~= nil) and (metatext_textisword or (name ~= "text" and string.sub(name,1,5) ~= "text_")) and (alreadydone[name] == nil) then
+			if (fullunitlist[name] ~= nil) and (name ~= "text") and (metatext_textisword or string.sub(name,1,5) ~= "text_") and (alreadydone[name] == nil) then
 				local these = findall({name,{}})
 				alreadydone[name] = 1
 
@@ -1726,7 +1726,8 @@ function findwordunits()
 				local ids = v[3]
 				local tags = v[4]
 
-				if (rule[1] == b) or (rule[1] == "all") or ((rule[1] ~= b) and (string.sub(rule[1], 1, 3) == "not")) then
+				-- Gotta change this to prevent some false infinite loops
+				if (rule[1] == b) or (rule[1] == "all" and string.sub(b,1,5) ~= "text_") or ((rule[1] ~= b) and (string.sub(rule[1], 1, 3) == "not") and string.sub(b,1,5) ~= "text_") or ((rule[1] == "text" or rule[1] == "not all") and string.sub(b,1,5) == "text_") or ((rule[1] ~= b) and (string.sub(rule[1], 1, 9) == "not text_") and string.sub(b,1,5) == "text_") then
 					for c,g in ipairs(ids) do
 						for a,d in ipairs(g) do
 							local idunit = mmf.newObject(d)
@@ -1740,6 +1741,8 @@ function findwordunits()
 								found = true
 							elseif (rule[1] ~= checkname) and (string.sub(rule[1], 1, 3) == "not") then
 								--MF_alert("Not Object - found")
+								found = true
+							elseif (idunit.strings[UNITNAME] == "text_text_") then
 								found = true
 							end
 						end

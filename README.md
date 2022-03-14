@@ -1,5 +1,5 @@
 # Baba Is You - Better Metatext
-**For game version: 460c**
+**For game version: 462d**
 
 A mod that fully implements metatext into Baba Is You on Steam.
 
@@ -35,8 +35,8 @@ There are multiple ways to get metatext in your level.
 - If you find any bugs, let me know.
 
 **CREDITS**
-- RocketRace#0798's ROBOT IS YOU bot for the Meta/Unmeta sprites
-- Hempuli for making Baba Is You
+- RocketRace#0798's ROBOT IS YOU bot for the former Meta/Unmeta sprites
+- Hempuli for making Baba Is You and for... other inspiration
 - PlasmaFlare#5648 for reference on how to make readmes like this one, making the
 scripts I reference here, inspiration for the mod menu, and for reference on how to make said menu.
 - Me for programming and the TEXT_ prefix sprites.
