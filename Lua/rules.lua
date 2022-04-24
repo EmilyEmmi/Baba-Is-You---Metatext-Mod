@@ -527,6 +527,9 @@ function addoption(option,conds_,ids,visible,notrule,tags_)
 					local newword1 = target
 					local newword2 = verb
 					local newword3 = a
+					if effect == "not text" then
+						newword3 = "not " .. a
+					end
 
 					local newrule = {newword1, newword2, newword3}
 					addoption(newrule,newconds,ids,false,nil,newtags)
@@ -1639,67 +1642,69 @@ function findwordunits()
 			local name = rule[1]
 			local subid = ""
 
-			if (fullunitlist[name] ~= nil) and (name ~= "text") and (metatext_textisword or string.sub(name,1,5) ~= "text_") and (alreadydone[name] == nil) then
-				local these = findall({name,{}})
-				alreadydone[name] = 1
+			if (rule[2] == "is") then
+				if (fullunitlist[name] ~= nil) and (name ~= "text") and (metatext_textisword or string.sub(name,1,5) ~= "text_") and (alreadydone[name] == nil) then
+					local these = findall({name,{}})
+					alreadydone[name] = 1
 
-				if (#these > 0) then
-					for a,b in ipairs(these) do
-						local bunit = mmf.newObject(b)
-						local valid = true
+					if (#these > 0) then
+						for a,b in ipairs(these) do
+							local bunit = mmf.newObject(b)
+							local valid = true
 
-						if (featureindex["broken"] ~= nil) then
-							if (hasfeature(getname(bunit),"is","broken",b,bunit.values[XPOS],bunit.values[YPOS]) ~= nil) then
-								valid = false
+							if (featureindex["broken"] ~= nil) then
+								if (hasfeature(getname(bunit),"is","broken",b,bunit.values[XPOS],bunit.values[YPOS]) ~= nil) then
+									valid = false
+								end
+							end
+
+							if valid then
+								table.insert(result, {b, conds})
+								subid = subid .. name
+								-- LISÄÄ TÄHÄN LISÄÄ DATAA
 							end
 						end
+					end
+				end
 
-						if valid then
-							table.insert(result, {b, conds})
-							subid = subid .. name
-							-- LISÄÄ TÄHÄN LISÄÄ DATAA
+				if (#subid > 0) then
+					for a,b in ipairs(conds) do
+						local condtype = b[1]
+						local params = b[2] or {}
+
+						subid = subid .. condtype
+
+						if (#params > 0) then
+							for c,d in ipairs(params) do
+								subid = subid .. tostring(d)
+
+								related = findunits(d,related,conds)
+							end
 						end
 					end
 				end
-			end
 
-			if (#subid > 0) then
-				for a,b in ipairs(conds) do
-					local condtype = b[1]
-					local params = b[2] or {}
+				table.insert(fullid, subid)
 
-					subid = subid .. condtype
+				--MF_alert("Going through " .. name)
 
-					if (#params > 0) then
-						for c,d in ipairs(params) do
-							subid = subid .. tostring(d)
+				if (#ids > 0) then
+					if (#ids[1] == 1) then
+						local firstunit = mmf.newObject(ids[1][1])
 
-							related = findunits(d,related,conds)
+						local notname = name
+						if (string.sub(name, 1, 4) == "not ") then
+							notname = string.sub(name, 5)
+						end
+
+						if (firstunit.strings[UNITNAME] ~= "text_" .. name) and (firstunit.strings[UNITNAME] ~= "text_" .. notname) then
+							--MF_alert("Checking recursion for " .. name)
+							table.insert(checkrecursion, {name, i})
 						end
 					end
+				else
+					MF_alert("No ids listed in Word-related rule! rules.lua line 1302 - this needs fixing asap (related to grouprules line 1118)")
 				end
-			end
-
-			table.insert(fullid, subid)
-
-			--MF_alert("Going through " .. name)
-
-			if (#ids > 0) then
-				if (#ids[1] == 1) then
-					local firstunit = mmf.newObject(ids[1][1])
-
-					local notname = name
-					if (string.sub(name, 1, 4) == "not ") then
-						notname = string.sub(name, 5)
-					end
-
-					if (firstunit.strings[UNITNAME] ~= "text_" .. name) and (firstunit.strings[UNITNAME] ~= "text_" .. notname) then
-						--MF_alert("Checking recursion for " .. name)
-						table.insert(checkrecursion, {name, i})
-					end
-				end
-			else
-				MF_alert("No ids listed in Word-related rule! rules.lua line 1302 - this needs fixing asap (related to grouprules line 1118)")
 			end
 		end
 
