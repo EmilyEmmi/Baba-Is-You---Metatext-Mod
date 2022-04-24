@@ -1,5 +1,5 @@
 # Baba Is You - Better Metatext
-**For game version: 462d**
+**For game version: 465**
 
 A mod that fully implements metatext into Baba Is You on Steam.
 
