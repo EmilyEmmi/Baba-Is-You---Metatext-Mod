@@ -1,5 +1,5 @@
 # Baba Is You - Better Metatext
-**For game version: 465**
+**For game version: 469**
 
 A mod that fully implements metatext into Baba Is You on Steam.
 
@@ -15,8 +15,9 @@ To install, place the Lua and Sprite folders in your levelpack folder, and write
 <img src="gifs/howtoinstall.gif" alt="gif is not render :(" width="800"/>
 
 There are two optional files: one named "text_ prefix.lua" and one named "metaunmeta.lua". Neither are required for the rest of the mod to work, although they are recommended. **If you choose to leave out both files, the SPRITES folder is not needed.**
+(There's actually a third optional file. What does it do?)
 
-You can also enable or disable new features with the ~~file "defines + misc.lua."~~ the new mod menu ~~not at all inspired by Plasmaflare's modpack~~. It should appear in the top left in the levelpack menu, as seen here:
+You can also enable or disable new features with the new mod menu ~~not at all inspired by Plasmaflare's modpack~~. It should appear in the top left in the levelpack menu, as seen here:
 
 <img src="gifs/menu.png" alt="png is not render :(" width="800"/>
 
@@ -24,7 +25,7 @@ Features documented [here](exfeatures.md).
 
 There are multiple ways to get metatext in your level.
 - Use [this script](https://cdn.discordapp.com/attachments/560913551586492475/854541928611971086/metatext.zip) by Plasmaflare to add most level 1 metatext to the editor. This also comes with sprites! Install with the rest of the mod.
-- Use [this other script](https://cdn.discordapp.com/attachments/560913551586492475/942916736074780713/metatext.zip) by several people to add most level 1, 2, AND 3 metatext to the editor. This comes with sprites, like the one above. Install with the rest of the mod. This is more up-to-date than the one above, but takes up more space.
+- Use [this other script](https://cdn.discordapp.com/attachments/560913551586492475/988229340963684352/metatext.zip) by several people to add most level 1, 2, AND 3 metatext to the editor. This comes with sprites, like the one above. Install with the rest of the mod. This is more up-to-date than the one above, but takes up more space.
 - Rename an object to "text_text_(name)" without quotations, with (name) being the name of the text you want to refer to. You can go deeper by naming an object "text_text_text_(name)" to refer to "text_text_(name)". **Make sure you set its text type to 0 (Baba)!**
 - A new feature with this mod: The TEXT_ prefix. More info [here](exfeatures.md).
 - There's also an option for creating additional metatext on the fly. More info [here](exfeatures.md).

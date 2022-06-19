@@ -1,11 +1,13 @@
--- Implement FULLUNITLIST, add text units to "text" unitlist (for WITHOUT), and fix sprites on auto generation.
-function addunit(id,undoing_)
+-- Implement FULLUNITLIST, add units to meta# unitlist (for WITHOUT), and fix sprites on auto generation.
+function addunit(id,undoing_,levelstart_)
 	local unitid = #units + 1
 
 	units[unitid] = {}
 	units[unitid] = mmf.newObject(id)
 
 	local unit = units[unitid]
+	local undoing = undoing_ or false
+	local levelstart = levelstart_ or false
 
 	getmetadata(unit)
 
@@ -31,39 +33,55 @@ function addunit(id,undoing_)
 		table.insert(animunits, unit.fixed)
 	end
 
-	local name = getname(unit)
+	local name = getname(unit, "text")
 	local name_ = unit.strings[NAME]
+	local name__ = unit.strings[UNITNAME]
 	unit.originalname = unit.strings[UNITNAME]
 
 	if (unitlists[name] == nil) then
 		unitlists[name] = {}
 	end
 
+	if (string.sub(name_, 1, 5) == "text_") then
+		unit.flags[META] = true
+	end
+
 	table.insert(unitlists[name], unit.fixed)
 
+	if (name ~= name__) then
+		if (unitlists[name__] == nil) then
+			unitlists[name__] = {}
+		end
+		table.insert(unitlists[name__], unit.fixed)
+	end
+
+	-- Fixes sprites
 	if fullunitlist == nil then
 		fullunitlist = {}
-	elseif fullunitlist[name] ~= nil and string.sub(fullunitlist[name],1,3) == "fix" then
+	elseif fullunitlist[name__] ~= nil and string.sub(fullunitlist[name__],1,3) == "fix" then
 		local root = false
-		local sprite = string.sub(fullunitlist[name],4)
-		if string.sub(fullunitlist[name],1,7) == "fixroot" then
+		local sprite = string.sub(fullunitlist[name__],4)
+		if string.sub(fullunitlist[name__],1,7) == "fixroot" then
 			root = true
-			sprite = string.sub(fullunitlist[name],8)
+			sprite = string.sub(fullunitlist[name__],8)
 		end
 		MF_changesprite(unit.fixed, sprite, root)
-		fullunitlist[name] = 1
+		fullunitlist[name__] = 1
 	end
+
 	if (unit.strings[UNITTYPE] ~= "text") or ((unit.strings[UNITTYPE] == "text") and (unit.values[TYPE] == 0)) then
 		objectlist[name_] = 1
 		fullunitlist[name_] = 1
-		if unit.strings[UNITTYPE] == "text" then
-			if (unitlists["text"] == nil) then
-				unitlists["text"] = {}
-			end
-			table.insert(unitlists["text"], unit.fixed)
-		end
 	end
-	fullunitlist[name] = 1
+	-- Adds units to meta# unitlist
+	local level = getmetalevel(name__)
+	if level >= -1 then
+		if (unitlists["meta" .. level] == nil) then
+			unitlists["meta" .. level] = {}
+		end
+		table.insert(unitlists["meta" .. level], unit.fixed)
+	end
+	fullunitlist[name__] = 1
 
 	if (unit.strings[UNITTYPE] == "text") then
 		table.insert(codeunits, unit.fixed)
@@ -86,8 +104,6 @@ function addunit(id,undoing_)
 		unit.colour = {cc1,cc2}
 	end
 
-	local undoing = undoing_ or false
-
 	unit.back_init = 0
 	unit.broken = 0
 
@@ -101,6 +117,7 @@ function addunit(id,undoing_)
 	unit.colours = {}
 	unit.currcolour = 0
 	unit.followed = -1
+	unit.holder = 0
 	unit.xpos = unit.values[XPOS]
 	unit.ypos = unit.values[YPOS]
 
@@ -188,8 +205,7 @@ function createall(matdata,x_,y_,id_,dolevels_,leveldata_)
 
 									if (#mat == 0) then
 										local nunitid,ningameid = create(b,x,y,dir,nil,nil,nil,nil,leveldata)
-										local nrevertdata = getrevertorigin(ningameid,vunit.values[ID],matdata[1])
-										addundo({"convert",matdata[1],mat,ningameid,vunit.values[ID],x,y,dir,nrevertdata})
+										addundo({"convert",matdata[1],mat,ningameid,vunit.values[ID],x,y,dir})
 
 										if (matdata[1] == "text") or (string.sub(matdata[1],1,5) == "text_") or (matdata[1] == "level") then --THE LEGENDARY CHANGED LINE
 											table.insert(delthese, v)

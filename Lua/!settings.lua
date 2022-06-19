@@ -1,5 +1,14 @@
 --[[ This file is named this way to make sure it runs first.
 Obviously, this is ripping off- I mean, INSPIRED by Plasmaflare's.]]
+
+-- Function to see if the meta and unmeta file is included.
+local function check_meta_existence()
+  if editor_objlist["text_meta"] == nil then
+    return true
+  end
+  return false
+end
+
 -- Set up the settings.
 metatext_settings_list = {
   fix_quirks = {
@@ -7,7 +16,7 @@ metatext_settings_list = {
     boolean = true, -- If the two values are True and False, set this to True.
     default = true, -- The default value.
     name = "Fix issues with parity", -- Name that shows up in the menu.
-    tooltip = "Forces vanilla behavior when using TEXT IS TELE, TEXT IS MORE, and TEXT IS GROUP.", --Tooltip.
+    tooltip = "Forces vanilla behavior when using TEXT/META# IS TELE and TEXT IS GROUP.", --Tooltip.
   },
   overlay_style = {
     buttonfunc = "mtxt_overlay", --The button func.
@@ -18,7 +27,7 @@ metatext_settings_list = {
     },
     default = 0, -- The default value.
     name = "Metatext Overlay", -- Name that shows up in the menu.
-    tooltip = "Displays a number in the top right corner of metatext", --Tooltip.
+    tooltip = "Displays a number in the top right corner of metatext.", --Tooltip.
     tooltip_extra = { -- Additional info for each option.
       "This option disables this feature.",
       "This option enables this feature if the sprite used does not match.",
@@ -43,8 +52,8 @@ metatext_settings_list = {
     buttonfunc = "mtxt_othnometa", --The button func.
     boolean = true, -- If the two values are True and False, set this to True.
     default = false, -- The default value.
-    name = "'Metatext has/make text' refers to text word", -- Name that shows up in the menu.
-    tooltip = "Makes METATEXT HAS/MAKE TEXT refer to the 'text' word instead of the text referring to it.", --Tooltip.
+    name = "'Metatext has/make/become text' refers to text word", -- Name that shows up in the menu.
+    tooltip = "Makes METATEXT HAS/MAKE/BECOME TEXT refer to the 'text' word instead of the text referring to it.", --Tooltip.
   },
   auto_gen = {
     buttonfunc = "mtxt_autogen", --The button func.
@@ -63,6 +72,7 @@ metatext_settings_list = {
       "This option enables this feature, but only if the right sprite exists.",
       "This option enables this feature, and always uses the original sprite.",
     },
+    disable = check_meta_existence -- Will disable if this function retures true
   },
   easter_egg = {
     buttonfunc = "mtxt_egg", --The button func.
@@ -70,6 +80,13 @@ metatext_settings_list = {
     default = true, -- The default value.
     name = "Easter egg", -- Name that shows up in the menu.
     tooltip = "An easter egg. Not telling you what.", --Tooltip.
+  },
+  include_noun = {
+    buttonfunc = "mtxt_include", --The button func.
+    boolean = true, -- If the two values are True and False, set this to True.
+    default = false, -- The default value.
+    name = "NOT META(x) includes META-1", -- Name that shows up in the menu.
+    tooltip = "Makes META-1 included in NOT META# (Unless it's NOT META-1, of course).", --Tooltip.
   },
 }
 metatext_settings_order = {
@@ -79,6 +96,7 @@ metatext_settings_order = {
   "hasmake_nometa",
   "overlay_style",
   "auto_gen",
+  "include_noun",
   "easter_egg",
 }
 
@@ -113,6 +131,10 @@ menufuncs.metatext_settings = {
       y = y + f_tilesize
       for i,setname in ipairs(metatext_settings_order) do
         local data = metatext_settings_list[setname]
+        local disabled = false
+        if data.disable ~= nil then
+          disabled = data.disable()
+        end
         writetext(data.name,0,30,y,"settingsmenu",false,1)
         y = y + f_tilesize
         if data.boolean == true then
@@ -120,11 +142,11 @@ menufuncs.metatext_settings = {
           local selected = get_setting(setname,true) or 0
           local width = getdynamicbuttonwidth(langtext("yes"))
           local thisx = butx + ((#langtext("yes")/2)-1.5) * 10
-          createbutton(data.buttonfunc .. "_0",thisx,y,2,width,1,langtext("yes"),name,3,2,buttonid,false,selected,data.tooltip,nil,true)
+          createbutton(data.buttonfunc .. "_0",thisx,y,2,width,1,langtext("yes"),name,3,2,buttonid,disabled,selected,data.tooltip,nil,true)
           butx = thisx + 35 + (#langtext("yes")/2+1) * 10
           width = getdynamicbuttonwidth(langtext("no"))
           thisx = butx + ((#langtext("no")/2)-1.5) * 10
-          createbutton(data.buttonfunc .. "_1",thisx,y,2,width,1,langtext("no"),name,3,2,buttonid,false,(selected + 1) % 2,data.tooltip,nil,true)
+          createbutton(data.buttonfunc .. "_1",thisx,y,2,width,1,langtext("no"),name,3,2,buttonid,disabled,(selected + 1) % 2,data.tooltip,nil,true)
         else
           local value = get_setting(setname) or -1
           local butx = 60
@@ -136,7 +158,7 @@ menufuncs.metatext_settings = {
             if value == i - 1 then
               selected = 1
             end
-            createbutton(data.buttonfunc .. "_" .. i-1,thisx,y,2,width,1,option,name,3,2,buttonid,false,selected,tooltip,nil,true)
+            createbutton(data.buttonfunc .. "_" .. i-1,thisx,y,2,width,1,option,name,3,2,buttonid,disabled,selected,tooltip,nil,true)
             butx = thisx + 35 + (#option/2+1) * 10
           end
         end

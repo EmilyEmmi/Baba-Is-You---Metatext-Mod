@@ -113,7 +113,6 @@ function startblock(light_)
 end
 
 -- You can now make metatext, and metatext can now make text.
--- Also fixes some behavior if enabled.
 function block(small_)
 	local delthese = {}
 	local doned = {}
@@ -191,7 +190,8 @@ function block(small_)
 							local obspush = hasfeature(obsname,"is","push",b,x+ox,y+oy)
 							local obspull = hasfeature(obsname,"is","pull",b,x+ox,y+oy)
 
-							if (obsstop ~= nil) or (obspush ~= nil) or (obspull ~= nil) or (obsname == name) or (metatext_fixquirks and getname(unit,"text") == "text" and getname(bunit,"text") == "text" and checkiftextrule(name,"is","more",unit.fixed)) then
+							-- Commented out quirk fix
+							if (obsstop ~= nil) or (obspush ~= nil) or (obspull ~= nil) or (obsname == name) then--or (metatext_fixquirks and getname(unit,"text") == "text" and getname(bunit,"text") == "text" and checkiftextrule(name,"is","more",unit.fixed)) then
 								valid = false
 								break
 							end
@@ -259,6 +259,50 @@ function block(small_)
 
 					MF_particles("music",unit.values[XPOS],unit.values[YPOS],1,0,3,3,1)
 				end
+			end
+		end
+	end
+
+	if true then -- Hold support
+		local ishold = getunitswitheffect("hold",false,delthese)
+		local holders = {}
+
+		for id,unit in ipairs(ishold) do
+			local x,y = unit.values[XPOS],unit.values[YPOS]
+			local tileid = x + y * roomsizex
+			holders[unit.values[ID]] = 1
+
+			if (unitmap[tileid] ~= nil) then
+				local water = findallhere(x,y)
+
+				if (#water > 0) then
+					for a,b in ipairs(water) do
+						if floating(b,unit.fixed,x,y) then
+							if (b ~= unit.fixed) then
+								local bunit = mmf.newObject(b)
+								addundo({"holder",bunit.values[ID],bunit.holder,unit.values[ID],},unitid)
+								bunit.holder = unit.values[ID]
+							end
+						end
+					end
+				end
+			end
+		end
+
+		for i,unit in ipairs(units) do
+			if (unit.holder ~= nil) and (unit.holder ~= 0) then
+				if (holders[unit.holder] ~= nil) then
+					local unitid = getunitid(unit.holder)
+					local bunit = mmf.newObject(unitid)
+					local x,y = bunit.values[XPOS],bunit.values[YPOS]
+
+					update(unit.fixed,x,y,unit.values[DIR])
+				else
+					addundo({"holder",unit.values[ID],unit.holder,0,},unitid)
+					unit.holder = 0
+				end
+			else
+				unit.holder = 0
 			end
 		end
 	end
@@ -618,7 +662,7 @@ function block(small_)
 
 				local exists = false
 
-				if (v ~= "text") and (v ~= "all") then
+				if (v ~= "text") and (v ~= "all") and (string.sub(v,1,4) ~= "meta") then
 					for b,mat in pairs(fullunitlist) do
 						if (b == v) then
 							exists = true
@@ -629,8 +673,39 @@ function block(small_)
 						exists = tryautogenerate(nil,v)
 					end
 				else
-					if (v ~= "text") then
+					if (v ~= "text") and (string.sub(v,1,4) ~= "meta") then
 						exists = true
+					elseif (v ~= "text") then
+						local level = string.sub(v, 5)
+						if tonumber(level) ~= nil and tonumber(level) >= -1 then
+							local basename = string.gsub(name,"text_","")
+							if basename == "" then
+								basename = "text_"
+							end
+							local newname = string.rep("text_", level + 1) .. basename
+							for b,mat in pairs(fullunitlist) do
+								if (b == newname) and (findnoun(newname,nlist.short,true) == false) then
+									exists = true
+									break
+								end
+							end
+							if not exists and tonumber(level) >= 0 then
+								local lowestlevel = "text_" .. basename
+								if lowestlevel == "text_" then
+									lowestlevel = "text_text_"
+								end
+								local SAFETY = 0
+								while not getmat_text(lowestlevel) and SAFETY < 1000 do
+									lowestlevel = "text_" .. lowestlevel
+									SAFETY = SAFETY + 1
+								end
+								-- this will probably never happen but idk
+								if SAFETY >= 1000 then
+									error("Never got lowest level for auto-generation for META" .. level .. ". Please report this.")
+								end
+								exists = tryautogenerate(newname,lowestlevel)
+							end
+						end
 					else
 						for b,mat in pairs(fullunitlist) do
 							if (b == "text_" .. name) then
@@ -655,7 +730,7 @@ function block(small_)
 								local thing = mmf.newObject(b)
 								local thingname = thing.strings[UNITNAME]
 
-								if (thing.flags[CONVERTED] == false) and ((thingname == v) or ((thing.strings[UNITTYPE] == "text") and (v == "text") and (unit.strings[UNITTYPE] ~= "text" or thingname == "text_" .. name))) then
+								if (thing.flags[CONVERTED] == false) and ((thingname == v) or ((thing.strings[UNITTYPE] == "text") and (v == "text") and (unit.strings[UNITTYPE] ~= "text" or thingname == "text_" .. name)) or "meta"..getmetalevel(thingname) == v) then
 									domake = false
 								end
 							end
@@ -663,12 +738,24 @@ function block(small_)
 					end
 
 					if domake then
-						if (findnoun(v,nlist.short) == false) or (string.sub(v, 1, 5) == "text_") then
+						if (findnoun(v,nlist.short,true) == false) then
 							create(v,x,y,dir,x,y,nil,nil,leveldata)
 						elseif (v == "text") then
 							if (name ~= "text") and (name ~= "all") then
 								create("text_" .. name,x,y,dir,x,y,nil,nil,leveldata)
 								updatecode = 1
+							end
+						elseif string.sub(v, 1, 4) == "meta" then
+							local level = string.sub(v, 5)
+							if tonumber(level) ~= nil and tonumber(level) >= -1 then
+								local basename = string.gsub(name,"text_","")
+								if basename == "" then
+									basename = "text_"
+								end
+								local newname = string.rep("text_", level + 1) .. basename
+								if (name ~= "text") and (name ~= newname) and (name ~= "all") then
+									create(newname,x,y,dir,x,y,nil,nil,leveldata)
+								end
 							end
 						elseif (string.sub(v, 1, 5) == "group") then
 							--[[
@@ -1204,7 +1291,7 @@ function moveblock(onlystartblock_)
 							local odata = objectdata[v]
 
 							if (odata.tele == nil) then
-								if ((targetname ~= name) or (metatext_fixquirks and getname(vunit,"text") == "text" and getname(unit,"text") == "text" and checkiftextrule(name,"is","tele",unitid))) and (v ~= unitid) then
+								if ((targetname ~= name) or (metatext_fixquirks and (getname(vunit,"text") == "text" and getname(unit,"text") == "text" and checkiftextrule(name,"is","tele",unitid)) or (getmetalevel(targetname) == getmetalevel(name) and checkiftextrule(name,"is","tele",nil,"meta"..getmetalevel(name))))) and (v ~= unitid) then
 									local teles = istele
 
 									if (#teles > 1) then
@@ -1215,7 +1302,7 @@ function moveblock(onlystartblock_)
 											local tele = mmf.newObject(b)
 											local telename = getname(tele)
 
-											if (b ~= unitid) and (telename == name or (metatext_fixquirks and getname(tele,"text") == "text" and getname(unit,"text") == "text" and checkiftextrule(name,"is","tele",unitid,true))) and (tele.flags[DEAD] == false) then
+											if (b ~= unitid) and (telename == name or ((metatext_fixquirks and getname(tele,"text") == "text" and getname(unit,"text") == "text" and checkiftextrule(name,"is","tele",unitid,true))) or (getmetalevel(telename) == getmetalevel(name) and checkiftextrule(name,"is","tele",unitid,true,"meta"..getmetalevel(name)))) and (tele.flags[DEAD] == false) then
 												table.insert(teletargets, b)
 											end
 										end
@@ -1287,147 +1374,9 @@ function moveblock(onlystartblock_)
 end
 
 -- :)
+local oldeffectblock = effectblock
 function effectblock()
-	local levelhide = nil
-
-	if (featureindex["level"] ~= nil) then
-		levelhide = hasfeature("level","is","hide",1)
-
-		local isred = hasfeature("level","is","red",1)
-		local isblue = hasfeature("level","is","blue",1)
-		local isgreen = hasfeature("level","is","green",1)
-		local islime = hasfeature("level","is","lime",1)
-		local isyellow = hasfeature("level","is","yellow",1)
-		local ispurple = hasfeature("level","is","purple",1)
-		local ispink = hasfeature("level","is","pink",1)
-		local isrosy = hasfeature("level","is","rosy",1)
-		local isblack = hasfeature("level","is","black",1)
-		local isgrey = hasfeature("level","is","grey",1)
-		local issilver = hasfeature("level","is","silver",1)
-		local iswhite = hasfeature("level","is","white",1)
-		local isbrown = hasfeature("level","is","brown",1)
-		local isorange = hasfeature("level","is","orange",1)
-		local iscyan = hasfeature("level","is","cyan",1)
-
-		local colours = {isred, isorange, isyellow, islime, isgreen, iscyan, isblue, ispurple, ispink, isrosy, isblack, isgrey, issilver, iswhite, isbrown}
-		local ccolours = {{2,2},{2,3},{2,4},{5,3},{5,2},{1,4},{3,2},{3,1},{4,1},{4,2},{0,4},{0,1},{0,2},{0,3},{6,1}}
-
-		leveldata.colours = {}
-		local c1,c2 = -1,-1
-
-		for a=1,#ccolours do
-			if (colours[a] ~= nil) then
-				local c = ccolours[a]
-
-				if (#leveldata.colours == 0) then
-					c1 = c[1]
-					c2 = c[2]
-				end
-
-				table.insert(leveldata.colours, {c[1],c[2]})
-			end
-		end
-
-		if (#leveldata.colours == 1) then
-			if (c1 > -1) and (c2 > -1) then
-				if (c1 == 0) and (c2 == 4) then
-					MF_backcolour(c1, c2)
-				else
-					MF_backcolour_dim(c1, c2)
-				end
-			end
-		elseif (#leveldata.colours == 0) then
-			MF_backcolour(0, 4)
-		end
-	else
-		MF_backcolour(0, 4)
-	end
-
-	local resetcolour = {}
-	local updatecolour = {}
-
-	for i,unit in ipairs(units) do
-		unit.new = false
-
-		if (levelhide == nil) then
-			unit.visible = true
-		else
-			unit.visible = false
-		end
-
-		if (unit.className ~= "level") then
-			local name = getname(unit)
-			local isred = hasfeature(name,"is","red",unit.fixed)
-			local isblue = hasfeature(name,"is","blue",unit.fixed)
-			local islime = hasfeature(name,"is","lime",unit.fixed)
-			local isgreen = hasfeature(name,"is","green",unit.fixed)
-			local isyellow = hasfeature(name,"is","yellow",unit.fixed)
-			local ispurple = hasfeature(name,"is","purple",unit.fixed)
-			local ispink = hasfeature(name,"is","pink",unit.fixed)
-			local isrosy = hasfeature(name,"is","rosy",unit.fixed)
-			local isblack = hasfeature(name,"is","black",unit.fixed)
-			local isgrey = hasfeature(name,"is","grey",unit.fixed)
-			local issilver = hasfeature(name,"is","silver",unit.fixed)
-			local iswhite = hasfeature(name,"is","white",unit.fixed)
-			local isbrown = hasfeature(name,"is","brown",unit.fixed)
-			local isorange = hasfeature(name,"is","orange",unit.fixed)
-			local iscyan = hasfeature(name,"is","cyan",unit.fixed)
-
-			unit.colours = {}
-
-			local colours = {isred, isorange, isyellow, islime, isgreen, iscyan, isblue, ispurple, ispink, isrosy, isblack, isgrey, issilver, iswhite, isbrown}
-			local ccolours = {{2,2},{2,3},{2,4},{5,3},{5,2},{1,4},{3,2},{3,1},{4,1},{4,2},{0,4},{0,1},{0,2},{0,3},{6,1}}
-
-			local c1,c2,ca = -1,-1,-1
-
-			unit.flags[PHANTOM] = false
-			local isphantom = hasfeature(name,"is","phantom",unit.fixed)
-			if (isphantom ~= nil) then
-				unit.flags[PHANTOM] = true
-			end
-
-			for a=1,#ccolours do
-				if (colours[a] ~= nil) then
-					local c = ccolours[a]
-
-					if (#unit.colours == 0) then
-						c1 = c[1]
-						c2 = c[2]
-						ca = a
-					end
-
-					table.insert(unit.colours, c)
-				end
-			end
-
-			if (#unit.colours == 1) then
-				if (c1 > -1) and (c2 > -1) and (ca > 0) then
-					MF_setcolour(unit.fixed,c1,c2)
-					unit.colour = {c1,c2}
-					unit.values[A] = ca
-				end
-			elseif (#unit.colours == 0) then
-				if (unit.values[A] > 0) and (math.floor(unit.values[A]) == unit.values[A]) then
-					if (unit.strings[UNITTYPE] ~= "text") or (unit.active == false) then
-						setcolour(unit.fixed)
-					else
-						setcolour(unit.fixed,"active")
-					end
-					unit.values[A] = 0
-				end
-			else
-				unit.values[A] = ca
-
-				if (unit.strings[UNITTYPE] == "text") then
-					local curr = (unit.currcolour % #unit.colours) + 1
-					local c = unit.colours[curr]
-
-					unit.colour = {c[1],c[2]}
-					MF_setcolour(unit.fixed,c[1],c[2])
-				end
-			end
-		end
-	end
+	oldeffectblock()
 	if featureindex["love"] ~= nil and metatext_egg then
 		local valid = true
 		if featureindex["not love"] ~= nil then
@@ -1502,16 +1451,6 @@ function effectblock()
 					end
 				end
 			end
-		end
-	end
-
-	if (levelhide == nil) then
-		local ishide = findallfeature(nil,"is","hide",true)
-
-		for i,unitid in ipairs(ishide) do
-			local unit = mmf.newObject(unitid)
-
-			unit.visible = false
 		end
 	end
 end

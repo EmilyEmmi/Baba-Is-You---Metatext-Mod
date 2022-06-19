@@ -18,7 +18,18 @@ These properties change the meta level of text/objects:
 - META raises the meta level. ROCK is changed to TEXT_ROCK, TEXT_ROCK is changed to TEXT_TEXT_ROCK, etc.
 - UNMETA lowers the meta level. TEXT_TEXT_ROCK becomes TEXT_ROCK and TEXT_ROCK becomes ROCK. Texts that don't have an associated object won't be changed.
 **These are considered transformations, so NOUN IS NOUN will disable them.**
-Simply don't omit the file "metaunmeta.lua" to get this word.
+Simply don't omit the file "metaunmeta.lua" to get these words.
+
+### META(Number)
+
+<img src="gifs/metanum.gif" alt="gif is not render :(" width="400"/>
+
+These special nouns refer to a specific level of metatext:
+- META-1 refers to objects such as 'baba' and 'rock'
+- META0 refers to text such as 'text_baba' and 'text_is'
+- META1 refers to level 1 metatext such as 'text_text_baba'
+- ...and so on.
+Simply don't omit the file "metaunmeta.lua" to get these word. While this only adds up to META3 to the editor, upper levels such as META4 should work as intended.
 
 ## Settings menu
 
@@ -29,14 +40,14 @@ This lets you enable or disable certain features. It should appear in the top le
 This is saved with your levelpack, so when you send it, it should be ready to go!
 Here are the options available.
 
-# Fix issues with parity
+# Force vanilla behavior
 
 <img src="gifs/quirks.gif" alt="gif is not render :(" width="400"/>
 
 This option changes some behaviors to match vanilla. YES by default. The changes it makes are as follows:
-Making TEXT IS TELE specifically links all of the text together. Only text of the same type is linked if METATEXT IS TELE is formed.
-Making TEXT IS MORE specifically does not allow text units to ever grow into each other. METATEXT IS MORE will allow it for text units of different types.
-Making TEXT IS GROUP specifcally and NOUN HAS/MAKE GROUP will make the NOUN have/make only its own text type rather than every text in the level.
+Making TEXT/META# IS TELE links all of the included text together. Only text of the same type is linked if METATEXT IS TELE is formed.
+Making TEXT/META# IS GROUP and NOUN HAS/MAKE/BECOME GROUP will make the NOUN have/make/become only its own text type rather than every text in the level.
+Making TEXT/META# IS GROUP, NOUN NEAR GROUP IS X forces the noun to be near every text included to be X.
 
 # Metatext Overlay
 
@@ -72,6 +83,12 @@ If metatext that doesn't exist in the palette tries to be created, it gets added
 - Set to "Always same sprite" to always use the default sprites.
 **If the text exists in the editor but not in the palette, it will be added instead.**
 Report any bugs you find with this, because this kind of thing has the capability to ruin your object list.
+
+# NOT META# includes META-1 
+
+<img src="gifs/includenoun.gif" alt="gif is not render :(" width="400"/>
+
+Includes META-1 when NOT META# is written (except in NOT META-1, of course). NO by default.
 
 # Easter egg
 

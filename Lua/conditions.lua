@@ -137,8 +137,30 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 					local handlegroup = false
 
 					for a,b in ipairs(params_) do
-						if (string.sub(b, 1, 4) == "not ") or b == "text" then -- Fix TEXT and metatext in conditions
+						--[[ Test most specific to least specific
+						NOUN -> (NOT) META# -> NOT NOUN+TEXT
+						]]
+						if (string.sub(b, 1, 4) == "not ") or b == "text" then
 							table.insert(params, b)
+						elseif (string.sub(b, 1, 4) == "meta") or (string.sub(b, 1, 8) == "not meta") then
+							local insert = #params
+							if insert < 2 then
+								local param = params[1] or ""
+								if param ~= "text" and (string.sub(param, 1, 4) ~= "not ") then
+									table.insert(params, b)
+								else
+									table.insert(params, 1, b)
+								end
+							else
+								while insert > 1 do
+									local param = params[insert]
+									if param ~= "text" and (string.sub(param, 1, 4) ~= "not ") then
+										break
+									end
+									insert = insert - 1
+								end
+								table.insert(params, insert + 1, b)
+							end
 						else
 							table.insert(params, 1, b)
 						end
@@ -161,14 +183,14 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							if (string.sub(b, 1, 5) == "group") then
 								if (mem == nil) then
-									mem = findgroup(b,false,limit,checkedconds)
+									mem = findgroup(b,false,limit,checkedconds,metatext_fixquirks)
 								end
 								table.insert(removegroup, a)
 							elseif (string.sub(b, 1, 9) == "not group") then
 								notnoun = true
 
 								if (mem == nil) then
-									mem = findgroup(string.sub(b, 5),true,limit,checkedconds)
+									mem = findgroup(string.sub(b, 5),true,limit,checkedconds,metatext_fixquirks)
 								else
 									local memfound = {}
 
@@ -189,8 +211,27 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 
 							if (mem ~= nil) then
 								for c,d in ipairs(mem) do
-									if notnoun then
+									if notnoun or d == "text" then
 										table.insert(params, d)
+									elseif (string.sub(d, 1, 4) == "meta") then
+										local insert = #params
+										if insert < 2 then
+											local param = params[1] or ""
+											if param ~= "text" and (string.sub(param, 1, 4) ~= "not ") then
+												table.insert(params, d)
+											else
+												table.insert(params, 1, d)
+											end
+										else
+											while insert > 1 do
+												local param = params[insert]
+												if param ~= "text" and (string.sub(param, 1, 4) ~= "not ") then
+													break
+												end
+												insert = insert - 1
+											end
+											table.insert(params, insert + 1, d)
+										end
 									else
 										table.insert(params, 1, d)
 										removegroupoffset = removegroupoffset - 1
@@ -276,9 +317,9 @@ function testcond(conds,unitid,x_,y_,autofail_,limit_,checkedconds_,ignorebroken
 	return result
 end
 
---[[ Fix TEXT and NOT METATEXT parameters, fix WITHOUT and POWERED, and fix level surrounds.
+--[[ Fix TEXT, NOT METATEXT, and META# parameters, fix WITHOUT and POWERED, and fix level surrounds.
 All modified to change getname calls and handle level surrounds, unless specified.]]
-condlist["on"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.on = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 
@@ -411,12 +452,12 @@ condlist["on"] = function(params,checkedconds,checkedconds_,cdata)
 							if (surrounds["o"] ~= nil) then
 								for c,d in ipairs(surrounds["o"]) do
 									if (pnot == false) then
-										if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										if d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 											alreadyfound[bcode] = 1
 											ulist = true
 										end
 									else
-										if (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										if d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 											alreadyfound[bcode] = 1
 											ulist = true
 										end
@@ -450,7 +491,7 @@ condlist["on"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["near"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.near = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 
@@ -601,12 +642,12 @@ condlist["near"] = function(params,checkedconds,checkedconds_,cdata)
 							if (e ~= "dir") then
 								for c,d in ipairs(f) do
 									if (pnot == false) then
-										if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										if (ulist == false) and d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 											alreadyfound[bcode] = 1
 											ulist = true
 										end
 									else
-										if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										if (ulist == false) and d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 											alreadyfound[bcode] = 1
 											ulist = true
 										end
@@ -629,7 +670,7 @@ condlist["near"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["nextto"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.nextto = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 
@@ -782,12 +823,12 @@ condlist["nextto"] = function(params,checkedconds,checkedconds_,cdata)
 							if (e ~= "dir") and (e ~= "o") then
 								for c,d in ipairs(f) do
 									if (pnot == false) then
-										if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+										if (ulist == false) and d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 											alreadyfound[bcode] = 1
 											ulist = true
 										end
 									else
-										if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+										if (ulist == false) and d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 											alreadyfound[bcode] = 1
 											ulist = true
 										end
@@ -810,7 +851,7 @@ condlist["nextto"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["facing"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.facing = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 
@@ -914,12 +955,12 @@ condlist["facing"] = function(params,checkedconds,checkedconds_,cdata)
 					if (surrounds[dirid] ~= nil) then
 						for c,d in ipairs(surrounds[dirid]) do
 							if (pnot == false) then
-								if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+								if d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 									alreadyfound[bcode] = 1
 									allfound = allfound + 1
 								end
 							else
-								if (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+								if d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 									alreadyfound[bcode] = 1
 									allfound = allfound + 1
 								end
@@ -935,7 +976,7 @@ condlist["facing"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["seeing"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.seeing = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 		local targets = {}
@@ -1065,12 +1106,12 @@ condlist["seeing"] = function(params,checkedconds,checkedconds_,cdata)
 					if (surrounds[dirid] ~= nil) then
 						for c,d in ipairs(surrounds[dirid]) do
 							if (pnot == false) then
-								if (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+								if d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 									alreadyfound[bcode] = 1
 									allfound = allfound + 1
 								end
 							else
-								if (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+								if d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 									alreadyfound[bcode] = 1
 									allfound = allfound + 1
 								end
@@ -1088,12 +1129,12 @@ condlist["seeing"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To correctly handle WIHOUT NOT X
+condlist.without = function(params,checkedconds,checkedconds_,cdata) --To fix many issues
 		local allfound = 0
 		local alreadyfound = {}
 		local unitcount = {}
 
-		local name,notcond = cdata.name,cdata.notcond
+		local name,unitid,notcond = cdata.name,cdata.unitid,cdata.notcond
 
 		if (#params > 0) then
 			for a,b in ipairs(params) do
@@ -1131,7 +1172,7 @@ condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To cor
 							elseif (unitlists[b] ~= nil) and (#unitlists[b] > 0) then
 								local found = false
 
-								if (b ~= name) or (b == "text" and string.sub(name,1,5) == "text_") then
+								if (b ~= name) and (b ~= "text" or string.sub(name,1,5) ~= "text_") and ("meta" .. getmetalevel(name) ~= b) then
 									if (#unitlists[b] < unitcount[b]) then
 										found = true
 									end
@@ -1149,27 +1190,32 @@ condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To cor
 						end
 					else
 						local foundunits = 0
+						local targetcount = unitcount[b]
 
 						for c,d in pairs(unitlists) do
-							if (c ~= pname) and (#unitlists[c] > 0) and (c ~= "text") and (string.sub(c,1,5) ~= "text_") then
+							if (c ~= pname) and (#unitlists[c] > 0) and (
+							(findnoun(c,nlist.short) == false and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta")
+							or (string.sub(pname,1,5) == "text_" and string.sub(c,1,5) == "text_")
+							or (string.sub(pname,1,4) == "meta" and string.sub(c,1,4) == "meta" and (metatext_includenoun or c ~= "meta-1"))
+							) then
 								for e,f in ipairs(d) do
 									if (f ~= unitid) and (alreadyfound[f] == nil) then
 										alreadyfound[f] = 1
 										foundunits = foundunits + 1
 
-										if (foundunits >= unitcount[b]) then
+										if (foundunits >= targetcount) then
 											break
 										end
 									end
 								end
-							end
 
-							if (foundunits >= unitcount[b]) then
-								break
+								if (foundunits >= targetcount) then
+									break
+								end
 							end
 						end
 
-						if (foundunits < unitcount[b]) and (alreadyfound[bcode] == nil) then
+						if (foundunits < targetcount) and (alreadyfound[bcode] == nil) then
 							alreadyfound[bcode] = 1
 							allfound = allfound + 1
 						end
@@ -1204,7 +1250,7 @@ condlist["without"] = function(params,checkedconds,checkedconds_,cdata) --To cor
 
 		return (allfound == #params),checkedconds
 	end
-condlist["above"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.above = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
@@ -1343,12 +1389,12 @@ condlist["above"] = function(params,checkedconds,checkedconds_,cdata)
 						if (surrounds.d ~= nil) then
 							for c,d in ipairs(surrounds.d) do
 								if (pnot == false) then
-									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
 								else
-									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
@@ -1370,7 +1416,7 @@ condlist["above"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["below"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.below = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
@@ -1509,12 +1555,12 @@ condlist["below"] = function(params,checkedconds,checkedconds_,cdata)
 						if (surrounds.u ~= nil) then
 							for c,d in ipairs(surrounds.u) do
 								if (pnot == false) then
-									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
 								else
-									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
@@ -1536,7 +1582,7 @@ condlist["below"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["besideright"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.besideright = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
@@ -1675,12 +1721,12 @@ condlist["besideright"] = function(params,checkedconds,checkedconds_,cdata)
 						if (surrounds.l ~= nil) then
 							for c,d in ipairs(surrounds.l) do
 								if (pnot == false) then
-									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
 								else
-									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
@@ -1702,7 +1748,7 @@ condlist["besideright"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["besideleft"] = function(params,checkedconds,checkedconds_,cdata)
+condlist.besideleft = function(params,checkedconds,checkedconds_,cdata)
 		local allfound = 0
 		local alreadyfound = {}
 		local unitid,x,y,surrounds = cdata.unitid,cdata.x,cdata.y,cdata.surrounds
@@ -1841,12 +1887,12 @@ condlist["besideleft"] = function(params,checkedconds,checkedconds_,cdata)
 						if (surrounds.r ~= nil) then
 							for c,d in ipairs(surrounds.r) do
 								if (pnot == false) then
-									if (ulist == false) and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= "-" and (d == pname or (pname == "text" and string.sub(d,1,5) == "text_") or ("meta" .. getmetalevel(d) == pname)) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
 								else
-									if (ulist == false) and (d ~= pname and (pname ~= "text" or string.sub(d,1,5) ~= "text_")) and (alreadyfound[bcode] == nil) then
+									if (ulist == false) and d ~= pname and (((pname ~= "text" or string.sub(d,1,5) ~= "text_") and string.sub(pname,1,5) ~= "text_" and string.sub(pname,1,4) ~= "meta") or (string.sub(pname,1,5) == "text_" and string.sub(d,1,5) == "text_") or ("meta"..getmetalevel(d) ~= pname and (metatext_includenoun or getmetalevel(d) >= 0))) and (alreadyfound[bcode] == nil) then
 										alreadyfound[bcode] = 1
 										ulist = true
 									end
@@ -1868,7 +1914,7 @@ condlist["besideleft"] = function(params,checkedconds,checkedconds_,cdata)
 
 		return (allfound == #params),checkedconds
 	end
-condlist["powered"] = function(params,checkedconds,checkedconds_,cdata) --To correctly handle TEXT IS POWER
+condlist.powered = function(params,checkedconds,checkedconds_,cdata) --To correctly handle TEXT IS POWER and META# IS POWER
 		local found = false
 		local x,y,limit,subtype,conds = cdata.x,cdata.y,cdata.limit,cdata.subtype,tostring(cdata.conds)
 		local fullname = "power" .. subtype
@@ -1882,7 +1928,7 @@ condlist["powered"] = function(params,checkedconds,checkedconds_,cdata) --To cor
 
 				if (checkedconds[tostring(dconds)] == nil) then
 					if (string.sub(drule[1], 1, 4) ~= "not ") and (drule[2] == "is") and (drule[3] == fullname) then
-						if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") then
+						if (drule[1] ~= "empty") and (drule[1] ~= "level") and (drule[1] ~= "text") and (string.sub(drule[1],1,4) ~= "meta") then -- the changed line
 							if (unitlists[drule[1]] ~= nil) then
 								checkedconds[tostring(dconds)] = 1
 

@@ -473,7 +473,7 @@ function docode(firstwords)
 										break
 									end
 								elseif gottagoback then
-									gottgoback = false
+									gottagoback = false
 									-- MF_alert(tostring(notslot) .. ", not -> A, " .. unique_id .. ", " .. sent_id)
 									local subsent_id = string.sub(sent_id, (notslot - existing_wordid)+1)
 									if notids[1] ~= nil then

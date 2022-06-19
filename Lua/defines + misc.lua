@@ -3,9 +3,10 @@
 table.insert( mod_hook_functions["level_start"], function()
 
 metatext_fixquirks = get_setting("fix_quirks") --[[Set this to FALSE to:
-Make TEXT IS TELE link text units of the same type together rather than all text units
-Make TEXT IS MORE allow text units to grow into other text units as long as they are not the same type
-Make TEXT IS GROUP, NOUN HAS/MAKE GROUP make NOUN HAS/MAKE every text in the level.]]
+Make TEXT/META# IS TELE link text units of the same type together rather than all text units included.
+(Removed as of v469) Make TEXT IS MORE allow text units to grow into other text units as long as they are not the same type.
+Make TEXT/META# IS GROUP, NOUN HAS/MAKE/BECOME GROUP make NOUN HAS/MAKE/BECOME every text included.
+Make TEXT/META# IS GROUP, NOUN NEAR GROUP force noun to be near every text included.]]
 
 metatext_overlaystyle = get_setting("overlay_style",true) --[[Has 3 options:
 0 disables this feature.
@@ -32,16 +33,22 @@ Comes with the following options:
 Anything else always uses the default sprite. If you choose this, you're gonna want the overlay on.
 Note that if the nonexistant text is available in the editor object list, that will be referenced instead.]]
 
+metatext_includenoun = get_setting("include_noun") --Includes nouns in NOT META#.
+
 metatext_egg = get_setting("easter_egg") --Easter egg. Set to FALSE to disable.
 
 end
 )
 
--- New function, checks if rule relies on TEXT noun. Based off of hasfeature()
-function checkiftextrule(rule1,rule2,rule3,unitid,findtextrule_)
+-- New function, checks if rule relies on certain noun. Based off of hasfeature()
+function checkiftextrule(rule1,rule2,rule3,unitid,findtextrule_,findtag_)
+  local findtag = "text"
   local findtextrule = false
   if findtextrule_ ~= nil then
     findtextrule = findtextrule_
+  end
+  if findtag_ ~= nil then
+    findtag = findtag_
   end
   if (featureindex[rule3] ~= nil) and (rule2 ~= nil) and (rule1 ~= nil) then
 		for i,rules in ipairs(featureindex[rule3]) do
@@ -50,7 +57,7 @@ function checkiftextrule(rule1,rule2,rule3,unitid,findtextrule_)
       local tags = rules[4]
       local foundtag = false
       for num,tag in pairs(tags) do
-        if tag == "text" then
+        if tag == findtag then
           foundtag = true
           break
         end
@@ -75,24 +82,14 @@ function writemetalevel()
     for id,unit in pairs(units) do
       local unitname = unit.strings[UNITNAME]
       if string.sub(unitname,1,10) == "text_text_" and unit.values[TYPE] == 0 and unit.visible then
-        local _,metalevel = string.gsub(unitname,"text_","text_")
-        if string.sub(unitname,-5) == "text_" then
-          metalevel = metalevel - 2
-        else
-          metalevel = metalevel - 1
-        end
+        local metalevel = getmetalevel(unitname)
         local show = true
         if metatext_overlaystyle == 1 then
           local c = changes[unit.className] or {}
           if c.image == nil then
             show = false
           else
-            local _,imetalevel = string.gsub(c.image,"text_","text_")
-            if string.sub(c.image,-5) == "text_" then
-              imetalevel = imetalevel - 2
-            else
-              imetalevel = imetalevel - 1
-            end
+            local imetalevel = getmetalevel(c.image)
             if imetalevel == metalevel then
               show = false
             end
@@ -672,6 +669,229 @@ function getunitverbtargets(rule2)
 						end
 
 						table.insert(result, {name, finalgroup})
+					end
+				end
+			end
+		end
+	end
+
+	return result
+end
+
+-- This fixes this really weird bug where the game tries to convert particles and text.
+olddoconvert = doconvert
+function doconvert(data,extrarule_)
+  local unitid = data[1]
+  if unitid ~= 2 then
+    local unit = mmf.newObject(unitid)
+    if unit.strings[UNITNAME] == "" then
+      return
+    end
+  end
+  olddoconvert(data,extrarule_)
+end
+
+--[[ Gets the meta level of a string
+(times "text_" appears, minus 1, minus 1 again if the string ends with "text_")
+Examples:
+"baba" = -1
+"text_baba" = 0
+"text_text_baba" = 1
+"text_text_" = 0
+"text_text_text_" = 1
+]]
+function getmetalevel(string)
+  local _,metalevel = string.gsub(string,"text_","text_")
+  if string.sub(string,-5) == "text_" then
+    metalevel = metalevel - 1
+  end
+  metalevel = metalevel - 1
+  return metalevel
+end
+
+-- Remove lines that include "text" rules if rule1 starts with "text_".
+function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
+	local ignorebroken = false
+	if (ignorebroken_ ~= nil) then
+		ignorebroken = ignorebroken_
+	end
+
+	if (rule1 ~= nil) and (rule2 ~= nil) and (rule3 ~= nil) then
+		if (featureindex[rule1] ~= nil) then
+			for i,rules in ipairs(featureindex[rule1]) do
+				local rule = rules[1]
+				local conds = rules[2]
+
+				if (conds[1] ~= "never") then
+					if (rule[1] == rule1) and (rule[2] == rule2) and (rule[3] == rule3) then
+						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+							return true
+						end
+					end
+				end
+			end
+		end
+
+		--[[ No bad don't
+    if (string.sub(rule1,1,5) == "text_") and (featureindex["text"] ~= nil) then
+			for i,rules in ipairs(featureindex["text"]) do
+				local rule = rules[1]
+				local conds = rules[2]
+
+				if (conds[1] ~= "never") then
+					if (rule[1] == "text") and (rule[2] == rule2) and (rule[3] == rule3) then
+						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+							return true
+						end
+					end
+				end
+			end
+		end]]
+	end
+
+	if (rule3 ~= nil) and (rule2 ~= nil) and (rule1 ~= nil) then
+		if (featureindex[rule3] ~= nil) then
+			for i,rules in ipairs(featureindex[rule3]) do
+				local rule = rules[1]
+				local conds = rules[2]
+
+				if (conds[1] ~= "never") then
+					if (rule[1] == rule1) and (rule[2] == rule2) and (rule[3] == rule3) then
+						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+							return true
+						end
+					end
+				end
+			end
+		end
+
+    --[[ No bad don't
+		if (string.sub(rule3,1,5) == "text_") and (featureindex["text"] ~= nil) then
+			for i,rules in ipairs(featureindex["text"]) do
+				local rule = rules[1]
+				local conds = rules[2]
+
+				if (conds[1] ~= "never") then
+					if (rule[1] == rule1) and (rule[2] == rule2) and (rule[3] == "text") then
+						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+							return true
+						end
+					end
+				end
+			end
+		end]]
+	end
+
+	if (featureindex[rule2] ~= nil) and (rule1 ~= nil) and (rule3 == nil) then
+		local usable = false
+
+		if (featureindex[rule1] ~= nil) then
+			for i,rules in ipairs(featureindex[rule1]) do
+				local rule = rules[1]
+				local conds = rules[2]
+
+				if (conds[1] ~= "never") then
+					for a,mat in pairs(objectlist) do
+						if (a == rule[1]) then
+							usable = true
+							break
+						end
+					end
+
+					if (rule[1] == rule1) and (rule[2] == rule2) and usable then
+						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+							return true
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+-- Fix issue with TEXT MAKE TEXT
+function getunitswithverb(rule2,ignorethese_,checkedconds)
+	local group = {}
+	local result = {}
+	local ignorethese = ignorethese_ or {}
+
+	if (featureindex[rule2] ~= nil) then
+		for i,v in ipairs(featureindex[rule2]) do
+			local rule = v[1]
+			local conds = v[2]
+
+			local name = rule[1]
+
+			if (rule[2] == rule2) and (conds[1] ~= "never") and (findnoun(rule[1],nlist.brief) == false) and (string.sub(rule[3], 1, 4) ~= "not ") then
+				if (group[name] == nil) then
+					group[name] = {}
+				end
+
+				table.insert(group[name], {rule[3], conds})
+			end
+		end
+
+		for i,v in pairs(group) do
+			if (string.sub(i, 1, 4) ~= "not ") and i ~= "text" and string.sub(i, 1, 4) ~= "meta" then -- changed line
+				if (i ~= "empty") then
+					local name = i
+					local fgroupmembers = unitlists[name]
+
+					if (fgroupmembers ~= nil) and (#fgroupmembers > 0) then
+						for c,d in ipairs(v) do
+							table.insert(result, {d[1],{},name})
+							local thisthisresult = result[#result][2]
+
+							for a,b in ipairs(fgroupmembers) do
+								if testcond(d[2],b,nil,nil,nil,nil,checkedconds) then
+									local unit = mmf.newObject(b)
+
+									if (unit.flags[DEAD] == false) then
+										local valid = true
+										for e,f in ipairs(ignorethese) do
+											if (f == b) then
+												valid = false
+												break
+											end
+										end
+
+										if valid then
+											table.insert(result[#result][2], unit)
+										end
+									end
+								end
+							end
+						end
+					end
+				else
+					local name = i
+					local empties = findempty()
+
+					if (#empties > 0) then
+						for c,d in ipairs(v) do
+							table.insert(result, {d[1],{},name})
+
+							for e,f in ipairs(empties) do
+								local x = math.floor(f % roomsizex)
+								local y = math.floor(f / roomsizex)
+
+								if testcond(d[2],2,x,y,nil,nil,checkedconds) then
+									local valid = true
+									for g,h in ipairs(ignorethese) do
+										if (f == h) then
+											valid = false
+											break
+										end
+									end
+
+									if valid then
+										table.insert(result[#result][2], f)
+									end
+								end
+							end
+						end
 					end
 				end
 			end

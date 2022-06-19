@@ -1,125 +1,4 @@
--- All: Remove lines that change name to "text"
-function issolid(unitid)
-	local unit = mmf.newObject(unitid)
-	local name = unit.strings[UNITNAME]
-
-	--[[ Remove to support metatext
-	if (unit.strings[UNITTYPE] == "text") then
-		name = "text"
-	end]]--
-
-	local ispush = hasfeature(name,"is","push",unitid)
-	local ispull = hasfeature(name,"is","pull",unitid)
-	local ismove = hasfeature(name,"is","move",unitid)
-	local isyou = hasfeature(name,"is","you",unitid) or hasfeature(name,"is","you2",unitid) or hasfeature(name,"is","3d",unitid)
-
-	if (ispush ~= nil) or (ispull ~= nil) or (ismove ~= nil) or (isyou ~= nil) then
-		return true
-	end
-
-	return false
-end
-function isgone(unitid)
-	if (issafe(unitid) == false) then
-		local unit = mmf.newObject(unitid)
-		local x,y,name = unit.values[XPOS],unit.values[YPOS],unit.strings[UNITNAME]
-
-		--[[ Remove to support metatext
-		if (unit.strings[UNITTYPE] == "text") then
-			name = "text"
-		end]]--
-
-		local isyou = hasfeature(name,"is","you",unitid,x,y) or hasfeature(name,"is","you2",unitid,x,y) or hasfeature(name,"is","3d",unitid,x,y)
-		local ismelt = hasfeature(name,"is","melt",unitid,x,y)
-		local isweak = hasfeature(name,"is","weak",unitid,x,y)
-		local isshut = hasfeature(name,"is","shut",unitid,x,y)
-		local isopen = hasfeature(name,"is","open",unitid,x,y)
-		local ismove = hasfeature(name,"is","move",unitid,x,y)
-		local ispush = hasfeature(name,"is","push",unitid,x,y)
-		local ispull = hasfeature(name,"is","pull",unitid,x,y)
-		local eat = findfeatureat(nil,"eat",name,x,y)
-
-		if (eat ~= nil) then
-			for i,v in ipairs(eat) do
-				if (v ~= unitid) then
-					return true
-				end
-			end
-		end
-
-		local issink = findfeatureat(nil,"is","sink",x,y)
-
-		if (issink ~= nil) then
-			for i,v in ipairs(issink) do
-				if (v ~= unitid) and floating(v,unitid,x,y) then
-					return true
-				end
-			end
-		end
-
-		if (isyou ~= nil) then
-			local isdefeat = findfeatureat(nil,"is","defeat",x,y)
-
-			if (isdefeat ~= nil) then
-				for i,v in ipairs(isdefeat) do
-					if floating(v,unitid,x,y) then
-						return true
-					end
-				end
-			end
-		end
-
-		if (ismelt ~= nil) then
-			local ishot = findfeatureat(nil,"is","hot",x,y)
-
-			if (ishot ~= nil) then
-				for i,v in ipairs(ishot) do
-					if floating(v,unitid,x,y) then
-						return true
-					end
-				end
-			end
-		end
-
-		if (isshut ~= nil) then
-			local isopen_ = findfeatureat(nil,"is","open",x,y)
-
-			if (isopen_ ~= nil) then
-				for i,v in ipairs(isopen_) do
-					if floating(v,unitid,x,y) then
-						return true
-					end
-				end
-			end
-		end
-
-		if (isopen ~= nil) then
-			local isshut_ = findfeatureat(nil,"is","shut",x,y)
-
-			if (isshut_ ~= nil) then
-				for i,v in ipairs(isshut_) do
-					if floating(v,unitid,x,y) then
-						return true
-					end
-				end
-			end
-		end
-
-		if (isweak ~= nil) then
-			local things = findallhere(x,y)
-
-			if (things ~= nil) then
-				for i,v in ipairs(things) do
-					if (v ~= unitid) and floating(v,unitid,x,y) then
-						return true
-					end
-				end
-			end
-		end
-	end
-
-	return false
-end
+-- Remove lines that change name to "text"
 function findtype(typedata,x,y,unitid_)
 	local result = {}
 	local unitid = 0
@@ -189,26 +68,46 @@ function getmat_text(name)
 	return false
 end
 
--- Prevent text from being called "text", except in some parameter cases
+-- Prevent text from being called "text", and also handles parameters
 function getname(unit,pname_,pnot_)
 	local result = unit.strings[UNITNAME]
 	local pname = pname_ or ""
-	local pnot = pnot_ or ""
+	local pnot = pnot_ or false
+	if type(pname) ~= "string" then
+		--Guys I fixed the bug that keeps getting reported
+		pname = ""
+	end
 
 	if (unit.strings[UNITTYPE] == "text") and (string.sub(result, 1, 5) ~= "text_") then
-		result = "text_" .. result
-	end
-	if (unit.strings[UNITTYPE] == "text") and ((pname == "text") or (pnot == true)) and (string.sub(pname,1,5) ~= "text_") then
+		result = "text_" .. result -- Makes mesatext not refer to itself. There are probably other oddities though
+	elseif (unit.strings[UNITTYPE] == "text") and ((pname == "text") or (pnot == true)) and (string.sub(pname,1,4) ~= "meta") and (string.sub(pname,1,5) ~= "text_") then
 		result = "text"
-	end
-	if (unit.strings[UNITTYPE] ~= "text") and (string.sub(pname,1,5) == "text_") and (pnot == true) then
+	elseif (unit.strings[UNITTYPE] ~= "text") and (string.sub(pname,1,5) == "text_") and (pnot == true) then
 		result = "text"
+	elseif string.sub(pname,1,4) == "meta" then
+		if metatext_includenoun or unit.strings[UNITTYPE] == "text" then
+			local include = false
+			local level = string.sub(pname,5)
+			if tonumber(level) ~= nil and tonumber(level) >= -1 then
+				local metalevel = getmetalevel(result)
+				if metalevel == tonumber(level) then
+					include = true
+				end
+			end
+			if include == pnot then
+				result = "text"
+			elseif not pnot then
+				result = pname
+			end
+		else
+			result = "text"
+		end
 	end
 
 	return result
 end
 
---Fixes TEXT HAS TEXT and NOT METATEXT HAS TEXT.
+--Fixes TEXT HAS TEXT and NOT METATEXT HAS TEXT, and implements HAS META#.
 function inside(name,x,y,dir_,unitid,leveldata_)
 	local ins = {}
 	local tileid = x + y * roomsizex
@@ -243,13 +142,29 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 			if testcond(conds,unitid,x,y) then
 				if (object == "text") then
 					object = "text_" .. name
+				elseif string.sub(object,1,4) == "meta" then
+					local level = string.sub(object,5)
+					if tonumber(level) ~= nil and tonumber(level) >= -1 then
+						local basename,_ = string.gsub(name,"text_","")
+						if basename == "" then
+							basename = "text_"
+						end
+						object = string.rep("text_",level + 1) .. basename
+						if findnoun(object,nlist.short,true) ~= false then
+							object = "_NONE_"
+						end
+					else
+						object = "_NONE_"
+					end
 				end
-				local did = false
-				for a,mat in pairs(fullunitlist) do -- ONLY CHANGED LINE
+				local did = false -- changes start here
+				for a,mat in pairs(fullunitlist) do -- main change
 					if (a == object) and (object ~= "empty") then
 						if (object ~= "all") and (string.sub(object, 1, 5) ~= "group") then
-							create(object,x,y,dir,nil,nil,nil,nil,leveldata)
-							did = true
+							if unitreference[object] ~= nil then
+								create(object,x,y,dir,nil,nil,nil,nil,leveldata)
+								did = true
+							end
 						elseif (object == "all") then
 							createall(v,x,y,unitid,nil,leveldata)
 							did = true
@@ -267,12 +182,12 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 	end
 end
 
--- Makes sure text units are considered special nouns
+-- Makes sure text units and meta# are considered special nouns
 function findnoun(noun,list_,ignoretext)
 	local list = list_ or nlist.full
 
 	for i,v in ipairs(list) do
-		if (v == noun) or ((v == "group") and (string.sub(noun, 1, 5) == "group")) or (string.sub(noun,1,5) == "text_" and v == "text" and ignoretext ~= true) then
+		if (v == noun) or ((v == "group") and (string.sub(noun, 1, 5) == "group")) or (string.sub(noun,1,5) == "text_" and v == "text" and ignoretext ~= true) or (string.sub(noun,1,4) == "meta" and v == "all") then
 			return true
 		end
 	end
@@ -280,14 +195,15 @@ function findnoun(noun,list_,ignoretext)
 	return false
 end
 
--- Removes text units from "text" unitlist when deleted
+-- Removes units from "meta#" unitlist when deleted.
 function delunit(unitid)
 	local unit = mmf.newObject(unitid)
 
 	if (unit ~= nil) then
-		local name = getname(unit)
+		local name = getname(unit, "text")
 		local x,y = unit.values[XPOS],unit.values[YPOS]
 		local unitlist = unitlists[name]
+		local unitlist_ = unitlists[unit.strings[UNITNAME]] or {}
 		local unittype = unit.strings[UNITTYPE]
 
 		if (unittype == "text") then
@@ -305,13 +221,26 @@ function delunit(unitid)
 				end
 			end
 		end
-		if (unittype == "text") then
-			local textunitlist = unitlists["text"]
-			if (textunitlist ~= nil) then
-				for i,v in pairs(textunitlist) do
+
+		if (unitlist_ ~= nil) then
+			for i,v in pairs(unitlist_) do
+				if (v == unitid) then
+					v = {}
+					table.remove(unitlist_, i)
+					break
+				end
+			end
+		end
+
+		-- This is the added part
+		local level = getmetalevel(unit.strings[UNITNAME])
+		if level >= -1 then
+			local munitlist = unitlists["meta" .. level]
+			if (munitlist ~= nil) then
+				for i,v in pairs(munitlist) do
 					if (v == unitid) then
 						v = {}
-						table.remove(textunitlist, i)
+						table.remove(munitlist, i)
 					end
 				end
 			end
@@ -435,13 +364,13 @@ function delunit(unitid)
 	end
 end
 
--- Adds option to exclude group rules made by "text" noun
+-- Adds option to exclude group rules made by "TEXT" or "META#" noun. It's used in conditions.lua.
 function findgroup(grouptype_,invert_,limit_,checkedconds_,notextnoun_)
 	local result = {}
 	local limit = limit_ or 0
 	local invert = invert_ or false
 	local grouptype = grouptype_ or "group"
-	local nottextnoun = nottextnoun_ or false
+	local notextnoun = notextnoun_ or false
 	local found = {}
 	local alreadyused = {}
 
@@ -456,15 +385,17 @@ function findgroup(grouptype_,invert_,limit_,checkedconds_,notextnoun_)
 		local conds = v[2]
 		local gtype = v[3]
 		local recursion = v[4]
-		local tags = v[4]
+		local tags = v[5]
 		local foundtag = false
-		if nottextnoun then
+		if notextnoun then
 			for num,tag in pairs(tags) do
-				if tag == "text" then
+				if tag == "text" or string.sub(tag,1,4) == "meta" then
 					foundtag = true
 					break
 				end
 			end
+		elseif name == "text" or string.sub(name,1,4) == "meta" then
+			foundtag = true
 		end
 
 		if (gtype == grouptype) and foundtag == false then
