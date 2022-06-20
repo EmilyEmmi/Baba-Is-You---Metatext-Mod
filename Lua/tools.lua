@@ -85,7 +85,7 @@ function getname(unit,pname_,pnot_)
 	elseif (unit.strings[UNITTYPE] ~= "text") and (string.sub(pname,1,5) == "text_") and (pnot == true) then
 		result = "text"
 	elseif string.sub(pname,1,4) == "meta" then
-		if metatext_includenoun or unit.strings[UNITTYPE] == "text" then
+		if metatext_includenoun or pnot == false or unit.strings[UNITTYPE] == "text" then
 			local include = false
 			local level = string.sub(pname,5)
 			if tonumber(level) ~= nil and tonumber(level) >= -1 then
