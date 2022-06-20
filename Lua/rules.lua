@@ -319,7 +319,7 @@ function addoption(option,conds_,ids,visible,notrule,tags_,visualonly_)
 			end
 			if tonumber(level) ~= nil and tonumber(level) >= -1 then
 				local metalevel = getmetalevel(target)
-				if metalevel == tonumber(level) and (findnoun(target,nil,true) == false) then
+				if metalevel == tonumber(level) and (findnoun(target,nlist.brief) == false and target ~= "text") then
 					effect = target
 					if isnot then
 						effect = "not " .. target

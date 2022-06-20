@@ -308,23 +308,10 @@ function conversion(dolevels_)
 			local name = words[1]
 			local thing = words[3]
 
-      if (not dolevels) and (operator == "is" or operator == "become") and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and ((thing ~= "not " .. name) and (thing ~= "all") and (thing ~= "text") and (thing ~= "revert") and (thing ~= "meta") and (thing ~= "unmeta")) and unitreference[thing] == nil and string.sub(thing,1,5) == "text_" and unitlists[name] ~= nil and #unitlists[name] > 0 then
-        tryautogenerate(nil,thing)
-      elseif (not dolevels) and operator == "write" and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and (thing ~= "not " .. name) and unitreference["text_" .. thing] == nil and string.sub(thing,1,5) == "text_" and unitlists[name] ~= nil and #unitlists[name] > 0 then
-        local lowestlevel = "text_" .. string.gsub(thing,"text_","")
-        if lowestlevel == "text_" then
-          lowestlevel = "text_text_"
-        end
-        local SAFETY = 0
-        while not getmat_text(lowestlevel) and SAFETY < 1000 do
-          lowestlevel = "text_" .. lowestlevel
-          SAFETY = SAFETY + 1
-        end
-        -- this will probably never happen but idk
-        if SAFETY >= 1000 then
-          error("Never got lowest level for auto-generation from WRITE. Please report this.")
-        end
-        tryautogenerate("text_" .. thing,lowestlevel)
+      if (not dolevels) and (operator == "is" or operator == "become") and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and ((thing ~= "not " .. name) and (thing ~= "all") and (thing ~= "text") and (thing ~= "revert") and (thing ~= "meta") and (thing ~= "unmeta")) and unitreference[thing] == nil and string.sub(thing,1,5) == "text_" and ((unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
+        tryautogenerate(thing)
+      elseif (not dolevels) and operator == "write" and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and (thing ~= "not " .. name) and unitreference["text_" .. thing] == nil and string.sub(thing,1,5) == "text_" and ((unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
+        tryautogenerate("text_" .. thing)
       end
 			if (name ~= "text") and (string.sub(name,1,4) ~= "meta") and ((getmat(thing) ~= nil) or (thing == "not " .. name) or (thing == "all") or (unitreference[thing] ~= nil) or ((thing == "text") and (unitreference["text_text"] ~= nil)) or (thing == "revert") or (thing == "meta") or (thing == "unmeta") or ((string.sub(thing,1,4) == "meta") and (unitreference["text_" .. thing] ~= nil)) or ((operator == "write") and getmat_text("text_" .. name))) then
 				if (featureindex[name] ~= nil) and (alreadydone[name] == nil) then
@@ -388,7 +375,7 @@ function conversion(dolevels_)
               elseif (object == "unmeta") and string.sub(name,1,5) == "text_" then
                 table.insert(conversions, {string.sub(name,6),conds})
                 if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
-                  tryautogenerate(nil,string.sub(name,6))
+                  tryautogenerate(string.sub(name,6))
                 end
               elseif (string.sub(object,1,4) == "meta") then
                 local level = string.sub(object,5)
@@ -399,22 +386,9 @@ function conversion(dolevels_)
                   end
                   local newname = string.rep("text_",level + 1) .. basename
                   table.insert(conversions, {newname,conds})
-                  if tonumber(level) >= 0 and unitreference[newname] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
+                  if tonumber(level) >= 0 and unitreference[newname] == nil and ((unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
                     if string.sub(newname,1,5) == "text_" then
-                      local lowestlevel = "text_" .. basename
-                      if lowestlevel == "text_" then
-                        lowestlevel = "text_text_"
-                      end
-                      local SAFETY = 0
-                      while not getmat_text(lowestlevel) and SAFETY < 1000 do
-                        lowestlevel = "text_" .. lowestlevel
-                        SAFETY = SAFETY + 1
-                      end
-                      -- this will probably never happen but idk
-                      if SAFETY >= 1000 then
-                        error("Never got lowest level for auto-generation for META" .. level .. ". Please report this.")
-                      end
-                      tryautogenerate(newname,lowestlevel)
+                      tryautogenerate(newname)
                     end
                   end
                 end
@@ -431,4 +405,35 @@ function conversion(dolevels_)
 			end
 		end
 	end
+end
+
+-- Autogenerate in LEVEL case
+function convertlevel()
+	local doundostate = doundo
+	doundo = false
+	for i,unit in pairs(units) do
+		if (unit.strings[LEVELFILE] == level_to_convert[1]) and (unit.flags[CONVERTED] == false) then
+			local mats = level_to_convert[2]
+			local mats2 = {}
+
+			for a,b in ipairs(mats) do
+				local ingameid = unit.values[ID]
+				if (a > 1) then
+					ingameid = newid()
+				end
+
+        if unitreference[b] == nil and string.sub(b,1,5) == "text_" then
+          local did = tryautogenerate(b)
+          if did then
+            table.insert(mats2,{b,ingameid,nil})
+          end
+        else
+          table.insert(mats2,{b,ingameid,nil})
+        end
+			end
+
+			doconvert({unit.fixed,"convert",mats2})
+		end
+	end
+	doundo = doundostate
 end

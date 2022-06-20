@@ -54,7 +54,7 @@ end
 -- Make WRITE work with text.
 function getmat_text(name)
 	if string.sub(name,1,10) == "text_text_" then
-		return true
+		name = string.sub(name,6)
 	end
 	local base = unitreference[name]
 	local changed = objectpalette[name]
@@ -172,7 +172,7 @@ function inside(name,x,y,dir_,unitid,leveldata_)
 					end
 				end
 				if not did and string.sub(object,1,5) == "text_" then
-					did = tryautogenerate(nil,object)
+					did = tryautogenerate(object)
 					if did then
 						create(object,x,y,dir,nil,nil,nil,nil,leveldata)
 					end

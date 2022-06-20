@@ -391,28 +391,8 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 end
 
 -- Try to add more metatext if it doesn't exist.
-function tryautogenerate(want,tilename)
+function tryautogenerate(want,have)
   if metatext_autogenerate ~= 0 then
-    if want == nil then
-      local test = tilename
-      local count = 0
-      if objectpalette["text_" .. test] == nil then
-        while objectpalette[test] == nil do
-          if string.sub(test,1,5) == "text_" then
-            test = string.sub(test,6)
-            count = count + 1
-          else
-            return false
-          end
-        end
-        local prefix = string.sub(tilename,1,(5*count))
-        tilename = test
-        want = prefix .. tilename
-      else
-        want = tilename
-        tilename = "text_" .. test
-      end
-    end
     if editor_objlist_reference[want] ~= nil then
       local data = editor_objlist[editor_objlist_reference[want]]
       local root = data.sprite_in_root
@@ -437,64 +417,6 @@ function tryautogenerate(want,tilename)
           nil,
       }
       local target = "120"
-      while target ~= nil do
-        local done = true
-        for objname,data in pairs(objectpalette) do
-          if data == "object" .. target then
-            done = false
-            target = tostring(tonumber(target) + 1)
-            while string.len(target) < 3 do
-              target = "0" .. target
-            end
-          end
-        end
-        if done then break end
-      end
-      savechange("object" .. target,new,nil,true)
-      dochanges_full("object" .. target)
-      objectpalette[want] = "object" .. target
-      objectlist[want] = 1
-      if root == true then
-        fullunitlist[want] = "fixroot" .. (data.sprite or data.name)
-      else
-        fullunitlist[want] = "fix" .. (data.sprite or data.name)
-      end
-      return true
-    else
-      local realname = objectpalette[tilename]
-      local root = getactualdata_objlist(realname,"sprite_in_root")
-      local colour = getactualdata_objlist(realname,"colour")
-      local active = getactualdata_objlist(realname,"active")
-      if colour == nil then
-        return false
-      end
-      local sprite = getactualdata_objlist(realname,"sprite",true) or getactualdata_objlist(realname,"name")
-      local colourasstring = colour[1] .. "," .. colour[2]
-      local activeasstring = active[1] .. "," .. active[2]
-      local new =
-      {
-          want,
-          sprite,
-          colourasstring,
-          getactualdata_objlist(realname,"tiling"),
-          0,
-          "text",
-          activeasstring,
-          root,
-          getactualdata_objlist(realname,"layer"),
-          nil,
-      }
-      if metatext_autogenerate == 1 or metatext_autogenerate == 2 then
-        if MF_findsprite("text_"..sprite.."_0_1.png",false) then
-          sprite = "text_"..sprite
-          new[2] = sprite
-          root = false
-          new[8] = root
-        elseif metatext_autogenerate == 2 then
-          return false
-        end
-      end
-      local target = "120"
       while target ~= "156" do
         local done = true
         for objname,data in pairs(objectpalette) do
@@ -516,12 +438,103 @@ function tryautogenerate(want,tilename)
         objectpalette[want] = "object" .. target
         objectlist[want] = 1
         if root == true then
-          fullunitlist[want] = "fixroot" .. sprite
+          fullunitlist[want] = "fixroot" .. (data.sprite or data.name)
         else
-          fullunitlist[want] = "fix" .. sprite
+          fullunitlist[want] = "fix" .. (data.sprite or data.name)
         end
         return true
       end
+    elseif have == nil then
+      local test = want
+      local count = 0
+      if objectpalette["text_" .. test] == nil then
+        while objectpalette[test] == nil do
+          if string.sub(test,1,5) == "text_" then
+            test = string.sub(test,6)
+            count = count + 1
+          else
+            local lowestlevel = "text_" .. test
+            if lowestlevel == "text_" then
+              lowestlevel = "text_text_"
+            end
+            local SAFETY = 0
+            while (not getmat_text(lowestlevel)) and SAFETY < 1000 do
+              lowestlevel = "text_" .. lowestlevel
+              SAFETY = SAFETY + 1
+            end
+            -- this should only happen when converting levels
+            if SAFETY >= 1000 then
+              return false
+            end
+            have = lowestlevel
+          end
+        end
+        local prefix = string.sub(have,1,(5*count))
+        have = prefix .. test
+      else
+        have = "text_" .. test
+      end
+    end
+    local realname = objectpalette[have]
+    local root = getactualdata_objlist(realname,"sprite_in_root")
+    local colour = getactualdata_objlist(realname,"colour")
+    local active = getactualdata_objlist(realname,"active")
+    if colour == nil then
+      return false
+    end
+    local sprite = getactualdata_objlist(realname,"sprite",true) or getactualdata_objlist(realname,"name")
+    local colourasstring = colour[1] .. "," .. colour[2]
+    local activeasstring = active[1] .. "," .. active[2]
+    local new =
+    {
+        want,
+        sprite,
+        colourasstring,
+        getactualdata_objlist(realname,"tiling"),
+        0,
+        "text",
+        activeasstring,
+        root,
+        getactualdata_objlist(realname,"layer"),
+        nil,
+    }
+    if metatext_autogenerate == 1 or metatext_autogenerate == 2 then
+      if MF_findsprite("text_"..sprite.."_0_1.png",false) then
+        sprite = "text_"..sprite
+        new[2] = sprite
+        root = false
+        new[8] = root
+      elseif metatext_autogenerate == 2 then
+        return false
+      end
+    end
+    local target = "120"
+    while target ~= "156" do
+      local done = true
+      for objname,data in pairs(objectpalette) do
+        if data == "object" .. target then
+          done = false
+          target = tostring(tonumber(target) + 1)
+          while string.len(target) < 3 do
+            target = "0" .. target
+          end
+        end
+      end
+      if done then break end
+    end
+    if target == "156" then
+      return false
+    else
+      savechange("object" .. target,new,nil,true)
+      dochanges_full("object" .. target)
+      objectpalette[want] = "object" .. target
+      objectlist[want] = 1
+      if root == true then
+        fullunitlist[want] = "fixroot" .. sprite
+      else
+        fullunitlist[want] = "fix" .. sprite
+      end
+      return true
     end
   end
   return false

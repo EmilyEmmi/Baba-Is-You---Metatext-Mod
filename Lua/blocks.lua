@@ -670,7 +670,7 @@ function block(small_)
 						end
 					end
 					if not exists and string.sub(v,1,5) == "text_" then
-						exists = tryautogenerate(nil,v)
+						exists = tryautogenerate(v)
 					end
 				else
 					if (v ~= "text") and (string.sub(v,1,4) ~= "meta") then
@@ -690,20 +690,7 @@ function block(small_)
 								end
 							end
 							if not exists and tonumber(level) >= 0 then
-								local lowestlevel = "text_" .. basename
-								if lowestlevel == "text_" then
-									lowestlevel = "text_text_"
-								end
-								local SAFETY = 0
-								while not getmat_text(lowestlevel) and SAFETY < 1000 do
-									lowestlevel = "text_" .. lowestlevel
-									SAFETY = SAFETY + 1
-								end
-								-- this will probably never happen but idk
-								if SAFETY >= 1000 then
-									error("Never got lowest level for auto-generation for META" .. level .. ". Please report this.")
-								end
-								exists = tryautogenerate(newname,lowestlevel)
+								exists = tryautogenerate(newname)
 							end
 						end
 					else
