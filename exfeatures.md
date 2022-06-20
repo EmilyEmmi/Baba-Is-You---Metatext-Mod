@@ -76,7 +76,7 @@ These are two seperate options. The first makes METATEXT IS TEXT not turn the sp
 
 <img src="gifs/magictrick.gif" alt="gif is not render :(" width="400"/>
 
-If metatext that doesn't exist in the palette tries to be created, it gets added to the pallete automatically. **Can only add to the first 35 slots assuming those slots also aren't filled in the palette. If it tries to create more, nothing happens.** Comes with the following options:
+If metatext that doesn't exist in the palette tries to be created, it gets added to the pallete automatically. Doesn't work with level.**Can only add to the last 35 slots assuming those slots also aren't filled in the palette. If it tries to create more, nothing happens.** Comes with the following options:
 - Set to "Never" to disable this. Default.
 - Set to "Try correct sprite" to have the auto generated text try to use the correct sprites if they exist. Otherwise, use the default sprites.
 - Set to "Force correct sprite" to only generate if the correct sprites exist.
