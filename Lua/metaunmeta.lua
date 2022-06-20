@@ -406,34 +406,3 @@ function conversion(dolevels_)
 		end
 	end
 end
-
--- Autogenerate in LEVEL case
-function convertlevel()
-	local doundostate = doundo
-	doundo = false
-	for i,unit in pairs(units) do
-		if (unit.strings[LEVELFILE] == level_to_convert[1]) and (unit.flags[CONVERTED] == false) then
-			local mats = level_to_convert[2]
-			local mats2 = {}
-
-			for a,b in ipairs(mats) do
-				local ingameid = unit.values[ID]
-				if (a > 1) then
-					ingameid = newid()
-				end
-
-        if unitreference[b] == nil and string.sub(b,1,5) == "text_" then
-          local did = tryautogenerate(b)
-          if did then
-            table.insert(mats2,{b,ingameid,nil})
-          end
-        else
-          table.insert(mats2,{b,ingameid,nil})
-        end
-			end
-
-			doconvert({unit.fixed,"convert",mats2})
-		end
-	end
-	doundo = doundostate
-end
