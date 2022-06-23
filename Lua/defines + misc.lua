@@ -392,7 +392,9 @@ end
 
 -- Try to add more metatext if it doesn't exist.
 function tryautogenerate(want,have)
-  if metatext_autogenerate ~= 0 then
+  if want == "text_" then
+    return false -- fix silly edgecase
+  elseif metatext_autogenerate ~= 0 then
     if editor_objlist_reference[want] ~= nil then
       local data = editor_objlist[editor_objlist_reference[want]]
       local root = data.sprite_in_root
