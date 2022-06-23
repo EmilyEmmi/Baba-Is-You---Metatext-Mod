@@ -1935,7 +1935,7 @@ function findwordunits()
 			local subid = ""
 
 			if (rule[2] == "is") then
-				if (fullunitlist[name] ~= nil) and (findnoun(a,nlist.short,true) == false) and (metatext_textisword or string.sub(name,1,5) ~= "text_") and (alreadydone[name] == nil) then
+				if (fullunitlist[name] ~= nil) and (findnoun(name,nlist.short,true) == false) and (metatext_textisword or string.sub(name,1,5) ~= "text_") and (alreadydone[name] == nil) then
 					local these = findall({name,{}})
 					alreadydone[name] = 1
 

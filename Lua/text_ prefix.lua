@@ -192,23 +192,27 @@ function docode(firstwords)
 							if tiletype == 4 and tilename == "text_" and tryasnoun ~= wordid then --text_ logic starts here
 								if tryasnoun == 0 then --If this is the first
 									if wordid + 1 <= #sent then
-										if stage ~= 3 then --False after infix conditions and verbs
+										if stage ~= 3 and not stage2reached then --False after infix conditions and verbs
 											local phase = 0
 											for fwordid=wordid + 1,#sent do --Now we start looking into the future
 												if (sent[fwordid][2] ~= 4 or sent[fwordid][1] ~= "text_") or (phase == 1 and sent[fwordid][1] == "text_") then --If this isn't a text_, unless we already encountered a noun.
 													if phase == 0 then --Move onto next phase if this is the first time
 														phase = 1
 													elseif (sent[fwordid][2] ~= 1 and sent[fwordid][2] ~= 6 and sent[fwordid][2] ~= 7 and sent[fwordid][2] ~= 4) then --Checks if this won't parse
+                            phase = 0
 														break
-													else --stop
+													elseif sent[fwordid][2] ~= 4 then --stop if we know it will parse
 														prefix = "text_" .. prefix
+                            phase = 0
 														break
 													end
 												elseif phase == 0 then --If we ran into a text_ first, we're gonna try it as a noun
 													tryasnoun = fwordid
 												end
 											end
-											if tryasnoun ~= 0 and prefix == "" then
+                      if phase == 1 then
+                        prefix = "text_" .. prefix
+                      elseif tryasnoun ~= 0 and prefix == "" then
 												phase = 0
 												for fwordid=wordid + 1,#sent do
 													if (sent[fwordid][2] ~= 4 or sent[fwordid][1] ~= "text_") or (phase == 1 and sent[fwordid][1] == "text_") or (tryasnoun == fwordid) then

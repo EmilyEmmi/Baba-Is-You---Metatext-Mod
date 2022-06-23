@@ -462,19 +462,22 @@ function tryautogenerate(want,have)
               lowestlevel = "text_" .. lowestlevel
               SAFETY = SAFETY + 1
             end
-            -- this should only happen when converting levels
+            -- this shouldn't happen, but just in case
             if SAFETY >= 1000 then
               return false
             end
             have = lowestlevel
+            break
           end
         end
-        local prefix = string.sub(have,1,(5*count))
-        have = prefix .. test
+        if have == nil then
+          have = test
+        end
       else
         have = "text_" .. test
       end
     end
+    print("Trying to generate "..want.." from "..have..".")
     local realname = objectpalette[have]
     local root = getactualdata_objlist(realname,"sprite_in_root")
     local colour = getactualdata_objlist(realname,"colour")
@@ -499,8 +502,9 @@ function tryautogenerate(want,have)
         nil,
     }
     if metatext_autogenerate == 1 or metatext_autogenerate == 2 then
-      if MF_findsprite("text_"..sprite.."_0_1.png",false) then
-        sprite = "text_"..sprite
+      local spritewanted = string.rep("text_",getmetalevel(want)+1) .. string.gsub(sprite,"text_","")
+      if MF_findsprite(spritewanted.."_0_1.png",false) then
+        sprite = spritewanted
         new[2] = sprite
         root = false
         new[8] = root
