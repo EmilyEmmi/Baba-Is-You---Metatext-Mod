@@ -7,7 +7,6 @@ In addition to implementing metatext, this mod comes with some new words that wo
 <img src="gifs/text prefix.gif" alt="gif is not render :(" width="400"/>
 
 This prefix goes before any word, parsing it as metatext. Make TEXT_ BABA IS YOU to make BABA text YOU!
-Simply don't omit the file "text_ prefix.lua" to get this word.
 Note: Baba will not send a text message.
 
 ### META / UNMETA
@@ -18,7 +17,6 @@ These properties change the meta level of text/objects:
 - META raises the meta level. ROCK is changed to TEXT_ROCK, TEXT_ROCK is changed to TEXT_TEXT_ROCK, etc.
 - UNMETA lowers the meta level. TEXT_TEXT_ROCK becomes TEXT_ROCK and TEXT_ROCK becomes ROCK. Texts that don't have an associated object won't be changed.
 **These are considered transformations, so NOUN IS NOUN will disable them.**
-Simply don't omit the file "metaunmeta.lua" to get these words.
 
 ### META(Number)
 
@@ -29,7 +27,7 @@ These special nouns refer to a specific level of metatext:
 - META0 refers to text such as 'text_baba' and 'text_is'
 - META1 refers to level 1 metatext such as 'text_text_baba'
 - ...and so on.
-Simply don't omit the file "metaunmeta.lua" to get these word. While this only adds up to META3 to the editor, upper levels such as META4 should work as intended.
+While this only adds up to META3 to the editor, upper levels such as META4 should work as intended.
 
 ## Settings menu
 
