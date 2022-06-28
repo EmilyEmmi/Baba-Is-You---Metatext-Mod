@@ -14,8 +14,7 @@ To install, place the Lua and Sprite folders in your levelpack folder, and write
 
 <img src="gifs/howtoinstall.gif" alt="gif is not render :(" width="800"/>
 
-There are two optional files: one named "text_ prefix.lua" and one named "metaunmeta.lua". Neither are required for the rest of the mod to work, although they are recommended. **If you choose to leave out both files, the SPRITES folder is not needed.**
-(There's actually a third optional file. What does it do?)
+The file "rpg.lua" is optional. But what does it do???
 
 You can also enable or disable new features with the new mod menu ~~not at all inspired by Plasmaflare's modpack~~. It should appear in the top left in the levelpack menu, as seen here:
 
