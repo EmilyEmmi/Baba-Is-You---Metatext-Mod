@@ -39,5 +39,5 @@ There are multiple ways to get metatext in your level.
 - Hempuli for making Baba Is You and for... other inspiration
 - PlasmaFlare#5648 for reference on how to make readmes like this one, making the
 scripts I reference here, inspiration for the mod menu, and for reference on how to make said menu.
-- Me for programming and the TEXT_ prefix sprites.
+- Me for programming and all sprites.
 If I forgot anyone, write who I forgot and send a carrier pigeon to me. Or ping me on Discord, whichever's more convenient.
