@@ -1,6 +1,7 @@
 -- This is an easter egg. You can delete this if you want.
 buttonclick_list["rpg"] = function()
   resetrpgdata()
+  MF_playmusic("cave",0,1,0)
   changemenu("rpgstart")
 end
 buttonclick_list["battle_continue"] = function()
@@ -38,6 +39,7 @@ buttonclick_list["battle_run"] = function()
   MF_letterclear("rpg_whatwill")
   MF_letterclear("rpg_menu")
   MF_letterclear("rpg_hud")
+  MF_playmusic("editorsong",0,1,0)
   changemenu("metatext_settings")
 end
 local old = menufuncs.metatext_settings.enter
@@ -83,6 +85,7 @@ function resetrpgdata()
         if (TURN == 1 or random == 1) and user.sp >= 100 then
           user.sp = user.sp - 100
           writetext(user.name.." performs the $2,1Fiery Jig$0,3.",0,x,y,"rpg_text",true,2)
+          MF_playsound("infinity")
           for num,cid in ipairs(PARTY_STATS.order) do
             y = y + f_tilesize
             local usee = PARTY_MEMBERS[cid]
@@ -110,6 +113,8 @@ function resetrpgdata()
           local userfront = (PARTY_STATS.order[1] == getindex(PARTY_MEMBERS,user) or ENEMY_STATS.order[1] == getindex(ENEMIES,user))
           local useefront = (PARTY_STATS.order[1] == getindex(PARTY_MEMBERS,usee) or ENEMY_STATS.order[1] == getindex(ENEMIES,usee))
           writetext(user.name.." $2,3slaps$0,3 "..usee.name.."!",0,x,y,"rpg_text",true,2)
+          MF_playsound("plop2_short")
+          generaldata.values[SHAKE] = 3
           y = y + f_tilesize
           local dmg,death = damage(user,usee,userfront,useefront,{"typeattack","fire",40})
           if dmg == "shield" then
@@ -130,6 +135,7 @@ function resetrpgdata()
           end
           if death then
             y = y + f_tilesize
+            MF_playsound("pop1")
             writetext(usee.name.." collapses.",0,x,y,"rpg_text",true,2)
           end
         else
@@ -137,6 +143,8 @@ function resetrpgdata()
           local userfront = (PARTY_STATS.order[1] == getindex(PARTY_MEMBERS,user) or ENEMY_STATS.order[1] == getindex(ENEMIES,user))
           local useefront = (PARTY_STATS.order[1] == getindex(PARTY_MEMBERS,usee) or ENEMY_STATS.order[1] == getindex(ENEMIES,usee))
           writetext(user.name.." $2,2angrily stomps$0,3 "..usee.name.."!",0,x,y,"rpg_text",true,2)
+          MF_playsound("plop1")
+          generaldata.values[SHAKE] = 6
           y = y + f_tilesize
           local dmg,death = damage(user,usee,userfront,useefront,{"typeattack","fire",100})
           if dmg == "shield" then
@@ -157,6 +165,7 @@ function resetrpgdata()
           end
           if death then
             y = y + f_tilesize
+            MF_playsound("pop1")
             writetext(usee.name.." collapses.",0,x,y,"rpg_text",true,2)
           end
         end
@@ -196,6 +205,7 @@ function resetrpgdata()
           end
           y = y + f_tilesize
           if healamount > 0 then
+            MF_playsound("tele1_short")
             writetext(usee.name.." recovered "..healamount.."HP!",0,x,y,"rpg_text",true,2)
           else
             writetext("But nothing happened.",0,x,y,"rpg_text",true,2)
@@ -209,8 +219,10 @@ function resetrpgdata()
         desc = "Mmm, bugs. Creates a shield that blocks one enemy attack.",
         effect = function(user,usee,x,y)
           if user == usee then
+            MF_playsound("move_hi1")
             writetext(user.name.." swallows the $0,2Earwig of Shielding$0,3.",0,x,y,"rpg_text",true,2)
           elseif usee.extras == nil or usee.extras.vegan == nil then
+            MF_playsound("move_hi1")
             writetext(user.name.." forces the $0,2Earwig of Shielding$0,3 down "..usee.name.."'s throat.",0,x,y,"rpg_text",true,2)
           else
             writetext(user.name.." tries to force the $0,2Earwig of Shielding$0,3",0,x,y,"rpg_text",true,2)
@@ -245,6 +257,7 @@ function resetrpgdata()
             local useefront = (PARTY_STATS.order[1] == getindex(PARTY_MEMBERS,usee) or ENEMY_STATS.order[1] == getindex(ENEMIES,usee))
             local coolness = damage(user,usee,userfront,useefront,{"cool",300})
             if coolness > 0 then
+              MF_playsound("lock2_short")
               writetext(usee.name.." cools off a bit!",0,x,y,"rpg_text",true,2)
             elseif coolness == 0 then
               writetext("But nothing happened.",0,x,y,"rpg_text",true,2)
@@ -272,6 +285,7 @@ function resetrpgdata()
           if usee.type == "fire" then
             local healamount = damage(user,usee,false,false,{"heal",800}) or 0
             if healamount > 0 then
+              MF_playsound("tele1_short")
               writetext(usee.name.." recovered "..healamount.."HP!",0,x,y,"rpg_text",true,2)
             else
               writetext("But nothing happened.",0,x,y,"rpg_text",true,2)
@@ -279,12 +293,14 @@ function resetrpgdata()
           else
             local dmg,death = damage(user,usee,false,false,{"damage",200})
             if dmg > 0 then
+              MF_playsound("burn1_short")
               writetext(usee.name.." takes "..dmg.." damage!",0,x,y,"rpg_text",true,2)
             else
               writetext("But nothing happened.",0,x,y,"rpg_text",true,2)
             end
             if death then
               y = y + f_tilesize
+              MF_playsound("pop1")
               writetext(usee.name.." faints from the spice.",0,x,y,"rpg_text",true,2)
             end
           end
@@ -306,6 +322,7 @@ function resetrpgdata()
           y = y + f_tilesize
           local healamount = damage(user,usee,false,false,{"heal",1000}) or 0
           if healamount > 0 then
+            MF_playsound("tele1_short")
             writetext(usee.name.." recovered "..healamount.."HP!",0,x,y,"rpg_text",true,2)
           else
             writetext("But nothing happened.",0,x,y,"rpg_text",true,2)
@@ -365,6 +382,7 @@ function resetrpgdata()
               writetext(user.name.." uses $1,4Dash$0,3 on "..usee.name.."! By the way, this shouldn't happen.",0,x,y,"rpg_text",true,2)
             end
             y = y + f_tilesize
+            MF_playsound("move_hi2")
             writetext(usee.name.." will move twice next turn!",0,x,y,"rpg_text",true,2)
             LATE_DASHER = getindex(PARTY_MEMBERS,usee)
             LATE_ALLY_DASHER = true
@@ -414,6 +432,7 @@ function resetrpgdata()
             if fixedrandom(1,2) == 1 then
               local healamount = damage(user,usee,false,false,{"heal",math.ceil(usee.max_hp*0.01)}) or 0
               if healamount > 0 then
+                MF_playsound("winnery_fast")
                 writetext(usee.name.." rises!",0,x,y,"rpg_text",true,2)
               else
                 writetext("But nothing happened.",0,x,y,"rpg_text",true,2)
@@ -430,6 +449,7 @@ function resetrpgdata()
           bdesc = "Avoids floor effects for 3 turns.",
           target = "party",
           effect = function(user,usee,x,y)
+            MF_playsound("whoooooosh")
             if usee == "party" then
               writetext(user.name.." casts $1,3Float$0,3 on the party.",0,x,y,"rpg_text",true,2)
               y = y + f_tilesize
@@ -492,11 +512,13 @@ function resetrpgdata()
               y = y + f_tilesize
               AREA_EFFECTS.happy = 2
               writetext("Good vibes fill the room!",0,x,y,"rpg_text",true,2)
+              MF_playsound("clear")
             elseif AREA_EFFECTS.happy ~= true then
               writetext(user.name.." continues to channel the $5,3Happy Song$0,3.",0,x,y,"rpg_text",true,2)
               y = y + f_tilesize
               AREA_EFFECTS.happy = AREA_EFFECTS.happy + 2
               writetext("The vibes get stronger!",0,x,y,"rpg_text",true,2)
+              MF_playsound("clear")
             else
               writetext(user.name.." channels the $5,3Happy Song$0,3.",0,x,y,"rpg_text",true,2)
               y = y + f_tilesize
@@ -511,6 +533,7 @@ function resetrpgdata()
           bdesc = "Makes physical enemy attacks miss this turn.",
           target = "party",
           effect = function(user,usee,x,y)
+            MF_playsound("done2")
             if usee == "party" then
               writetext(user.name.." casts $1,2Hide$0,3 on the party.",0,x,y,"rpg_text",true,2)
               y = y + f_tilesize
@@ -568,6 +591,7 @@ function resetrpgdata()
           bdesc = "Changes certain items into other items.",
           target = "item",
           effect = function(user,item,x,y)
+            MF_playsound("intro_flower_1")
             writetext(user.name.." cooks the "..item.name.."!",0,x,y,"rpg_text",true,2)
             y = y + f_tilesize
             if item.name == "$2,2Habanero$0,3" then
@@ -592,12 +616,14 @@ function resetrpgdata()
                       else
                         local dmg,death = damage(user,usee,false,false,{"damage",200})
                         if dmg > 0 then
+                          MF_playsound("burn1_short")
                           writetext("Spicy! "..usee.name.." takes "..dmg.." damage!",0,x,y,"rpg_text",true,2)
                         else
                           writetext("Spicy! But nothing happened.",0,x,y,"rpg_text",true,2)
                         end
                         if death then
                           y = y + f_tilesize
+                          MF_playsound("pop1")
                           writetext(usee.name.." faints from the spice.",0,x,y,"rpg_text",true,2)
                         end
                       end
@@ -617,12 +643,14 @@ function resetrpgdata()
                         else
                           local dmg,death = damage(user,usee,false,false,{"damage",200})
                           if dmg > 0 then
+                            MF_playsound("burn1_short")
                             writetext("Spicy! "..usee.name.." takes "..dmg.." damage!",0,x,y,"rpg_text",true,2)
                           else
                             writetext("Spicy! But nothing happened.",0,x,y,"rpg_text",true,2)
                           end
                           if death then
                             y = y + f_tilesize
+                            MF_playsound("pop1")
                             writetext(usee.name.." faints from the spice.",0,x,y,"rpg_text",true,2)
                           end
                         end
@@ -681,6 +709,7 @@ function resetrpgdata()
             else
               usee.extras.charmed = nil
               writetext(usee.name.." snaps out of it!",0,x,y,"rpg_text",true,2)
+              MF_playsound("bonus")
             end
             return y
           end,
@@ -840,6 +869,8 @@ menufuncs.party_do = {
         else
           writetext(c.name.." attacks themselves!",0,x,y,"rpg_text",true,2)
         end
+        MF_playsound("pop2_short")
+        generaldata.values[SHAKE] = 3
         y = y + f_tilesize
         local dmg,death = 0,false
         if ACTION[2][2] == true then
@@ -865,6 +896,7 @@ menufuncs.party_do = {
         end
         if death then
           y = y + f_tilesize
+          MF_playsound("pop1")
           writetext(e.name.." collapses.",0,x,y,"rpg_text",true,2)
         end
       elseif ACTION[1] == "move" then
@@ -1023,6 +1055,7 @@ menufuncs.loss = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      MF_playsound("done1")
       writetext("You've lost the battle.",0,x,y,"rpg_text",true,2)
       y = y + f_tilesize
       createbutton("battle_run",x,y,1,18,1,"oops","loss",3,2,buttonid)
@@ -1041,8 +1074,10 @@ menufuncs.victory = {
       local x = screenw * 0.5
       local y = 5 * f_tilesize
       if ENEMIES["red_dragon"].hp > 0 then
+        MF_playsound("clear")
         writetext("You won!",0,x,y,"rpg_text",true,2)
       else
+        MF_playsound("doneall_c")
         writetext("You won...",0,x,y,"rpg_text",true,2)
       end
       y = y + f_tilesize
@@ -1493,6 +1528,7 @@ function endturn(c,x,y)
         writetext(c.name.." snaps back to reality.",0,x,y,"rpg_text",true,2)
         y = y + f_tilesize
         c.extras.charmed = nil
+        MF_playsound("bonus")
       end
     end
   end
@@ -1508,11 +1544,13 @@ function endturn(c,x,y)
     if AREA_EFFECTS.lava ~= nil then
       local dmg,death = damage(nil,c,false,false,{"damage",300})
       if dmg > 0 then
+        MF_playsound("burn1_short")
         writetext(c.name.." is burnt for "..dmg.." damage.",0,x,y,"rpg_text",true,2)
         y = y + f_tilesize
       end
       if death then
         writetext(c.name.." is roasted.",0,x,y,"rpg_text",true,2)
+        MF_playsound("pop1")
         y = y + f_tilesize
       end
     end
@@ -1745,13 +1783,13 @@ function selectalive(isparty)
           c = PARTY_MEMBERS[cid]
         end
         if c.hp <= 0 then
-          if badnums[num] == nil then
-            badnums[num] = 1
-          end
           if #badnums < #table then
             while badnums[pick] ~= nil do
               pick = fixedrandom(1,#table)
             end
+          end
+          if badnums[num] == nil then
+            badnums[num] = 1
           end
         else
           return c
