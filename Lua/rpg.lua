@@ -570,7 +570,6 @@ function resetrpgdata()
       max_sp = 1500,
       sp = 1500,
       level = 25,
-      speed = 10,
       atk = 32,
       weapon = {
         name = "$2,2P$2,3a$2,4n $5,3o$3,3f $3,1P$2,2r$2,3i$2,4d$5,3e$0,3",
@@ -800,6 +799,7 @@ menufuncs.rpgstart = {
       writetext(dasher.name.."'s $1,4Dash$0,3 ability lets them move twice!",0,x,y,"rpg_text",true,2)
       y = y + f_tilesize
       createbutton("battle_continue",x,y,1,18,1,">>>>>>","rpgstart",3,2,buttonid)
+      buildmenustructure({{{"battle_continue"}}})
     end,
   leave =
     function(parent,name,buttonid)
@@ -813,6 +813,8 @@ menufuncs.party_select = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      local dynamic_structure = {}
+
       local c = PARTY_MEMBERS[CURR]
       if DASHER ~= CURR or ALLY_DASHER == false then
         c.gone = true
@@ -823,18 +825,27 @@ menufuncs.party_select = {
       writetext("What will "..c.name.." do?",0,x,y,"rpg_whatwill",true,2)
       y = y + f_tilesize
       createbutton("battle_basic",x,y,1,18,1,"Basic","party_select",3,2,buttonid,false,false,"Deals damage to one target using equipped weapon.")
+      table.insert(dynamic_structure,{{"battle_basic"}})
       y = y + f_tilesize
       createbutton("battle_ability",x,y,1,18,1,"Ability","party_select",3,2,buttonid,false,false,"Special action that costs SP.")
+      table.insert(dynamic_structure,{{"battle_ability"}})
       y = y + f_tilesize
       createbutton("battle_item",x,y,1,18,1,"Item","party_select",3,2,buttonid,false,false,"Use an item.")
+      table.insert(dynamic_structure,{{"battle_item"}})
       y = y + f_tilesize
       createbutton("battle_weapon",x,y,1,18,1,"Weapon","party_select",3,2,buttonid,CURR == PARTY_STATS.order[1],false,"Change weapon. Not available at the front.")
+      table.insert(dynamic_structure,{{"battle_weapon"}})
       y = y + f_tilesize
       createbutton("battle_armor",x,y,1,18,1,"Armor","party_select",3,2,buttonid,CURR == PARTY_STATS.order[1],false,"Change armor. Not available at the front.")
+      table.insert(dynamic_structure,{{"battle_armor"}})
       y = y + f_tilesize
       createbutton("battle_move",x,y,1,18,1,"Move","party_select",3,2,buttonid,false,false,"Move forward or backward.")
+      table.insert(dynamic_structure,{{"battle_move"}})
       y = y + f_tilesize
       createbutton("battle_run",x,y,1,18,1,"Run!","party_select",3,2,buttonid,false,false,"Escape battle.")
+      table.insert(dynamic_structure,{{"battle_run"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   submenu_leave =
     function(parent,name,buttonid)
@@ -976,6 +987,7 @@ menufuncs.party_do = {
       end
       y = y + f_tilesize
       createbutton("battle_continue",x,y,1,18,1,">>>>>>","party_do",3,2,buttonid)
+      buildmenustructure({{{"battle_continue"}}})
     end,
   leave =
     function(parent,name,buttonid)
@@ -993,6 +1005,7 @@ menufuncs.enemy_turn = {
       y = c.movelogic(c,x,y)
       y = y + f_tilesize
       createbutton("battle_continue",x,y,1,18,1,">>>>>>","enemy_turn",3,2,buttonid)
+      buildmenustructure({{{"battle_continue"}}})
     end,
   leave =
     function(parent,name,buttonid)
@@ -1041,6 +1054,7 @@ menufuncs.turn_effects = {
         rpg_passturn()
       else
         createbutton("battle_continue",x,y,1,18,1,">>>>>>","turn_effects",3,2,buttonid)
+        buildmenustructure({{{"battle_continue"}}})
       end
     end,
   leave =
@@ -1050,7 +1064,7 @@ menufuncs.turn_effects = {
 }
 menufuncs.loss = {
   button = "lose",
-  escbutton = "battle_continue",
+  escbutton = "battle_run",
   enter =
     function(parent,name,buttonid)
       local x = screenw * 0.5
@@ -1059,6 +1073,7 @@ menufuncs.loss = {
       writetext("You've lost the battle.",0,x,y,"rpg_text",true,2)
       y = y + f_tilesize
       createbutton("battle_run",x,y,1,18,1,"oops","loss",3,2,buttonid)
+      buildmenustructure({{{"battle_run"}}})
     end,
   leave =
     function(parent,name,buttonid)
@@ -1067,7 +1082,7 @@ menufuncs.loss = {
 }
 menufuncs.victory = {
   button = "win",
-  escbutton = "battle_continue",
+  escbutton = "battle_run",
   enter =
     function(parent,name,buttonid)
       -- no actual functionality here.
@@ -1102,6 +1117,7 @@ menufuncs.victory = {
       end
       y = y + f_tilesize
       createbutton("battle_run",x,y,1,18,1,"poggers","victory",3,2,buttonid)
+      buildmenustructure({{{"battle_run"}}})
     end,
   leave =
     function(parent,name,buttonid)
@@ -1115,11 +1131,14 @@ menufuncs.move_select = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      local dynamic_structure = {}
+
       local c = PARTY_MEMBERS[CURR]
       writetext("Which position?",0,x,y,"rpg_menu",true,2)
       y = y + f_tilesize
       for num,cid in ipairs(PARTY_STATS.order) do
         createbutton("option_"..num,x,y,1,18,1,num,"move_select",3,2,buttonid,cid == CURR,false,"Move to this position.")
+        table.insert(dynamic_structure,{{"option_"..num}})
         buttonclick_list["option_"..num] = function()
           table.insert(ACTION[2],num)
           closesubmenus()
@@ -1129,6 +1148,9 @@ menufuncs.move_select = {
       end
       y = y + f_tilesize
       createbutton("battle_back",x,y,1,18,1,"<<<<<<","move_select",3,2,buttonid,false,false,"Go back.")
+      table.insert(dynamic_structure,{{"battle_back"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   leave =
     function(parent,name,buttonid)
@@ -1142,11 +1164,14 @@ menufuncs.weapon_list = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      local dynamic_structure = {}
+
       local c = PARTY_MEMBERS[CURR]
       writetext("Choose a weapon.",0,x,y,"rpg_menu",true,2)
       y = y + f_tilesize
       if c.weapon ~= nil then
         createbutton("useless",x,y,1,18,1,c.weapon.name,"weapon_list",3,2,buttonid,true,false,c.weapon.desc)
+        table.insert(dynamic_structure,{{"useless"}})
         y = y + f_tilesize
       end
       local num = 0
@@ -1154,6 +1179,7 @@ menufuncs.weapon_list = {
         if weapon.user == CURR then
           num = num + 1
           createbutton("option_"..num,x,y,1,18,1,weapon.name,"weapon_list",3,2,buttonid,false,false,weapon.desc)
+          table.insert(dynamic_structure,{{"option_"..num}})
           buttonclick_list["option_"..num] = function()
             table.insert(ACTION[2],a)
             closesubmenus()
@@ -1163,6 +1189,7 @@ menufuncs.weapon_list = {
         end
       end
       createbutton("option_0",x,y,1,18,1,"dequip weapon","weapon_list",3,2,buttonid,c.weapon == nil,false,"Get rid of your current weapon.")
+      table.insert(dynamic_structure,{{"option_0"}})
       buttonclick_list["option_0"] = function()
         table.insert(ACTION[2],0)
         closesubmenus()
@@ -1171,6 +1198,9 @@ menufuncs.weapon_list = {
       y = y + f_tilesize
       y = y + f_tilesize
       createbutton("battle_back",x,y,1,18,1,"<<<<<<","weapon_list",3,2,buttonid,false,false,"Go back.")
+      table.insert(dynamic_structure,{{"battle_back"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   leave =
     function(parent,name,buttonid)
@@ -1184,11 +1214,14 @@ menufuncs.armor_list = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      local dynamic_structure = {}
+
       local c = PARTY_MEMBERS[CURR]
       writetext("Choose some armor.",0,x,y,"rpg_menu",true,2)
       y = y + f_tilesize
       if c.armor ~= nil then
         createbutton("useless",x,y,1,18,1,c.armor.name,"armor_list",3,2,buttonid,true,false,c.armor.desc)
+        table.insert(dynamic_structure,{{"useless"}})
         y = y + f_tilesize
       end
       local num = 0
@@ -1196,6 +1229,7 @@ menufuncs.armor_list = {
         if armor.user == CURR then
           num = num + 1
           createbutton("option_"..num,x,y,1,18,1,armor.name,"armor_list",3,2,buttonid,false,false,armor.desc)
+          table.insert(dynamic_structure,{{"option_"..num}})
           buttonclick_list["option_"..num] = function()
             table.insert(ACTION[2],a)
             closesubmenus()
@@ -1205,6 +1239,7 @@ menufuncs.armor_list = {
         end
       end
       createbutton("option_0",x,y,1,18,1,"dequip armor","armor_list",3,2,buttonid,c.armor == nil,false,"Take off your current armor.")
+      table.insert(dynamic_structure,{{"option_0"}})
       buttonclick_list["option_0"] = function()
         table.insert(ACTION[2],0)
         closesubmenus()
@@ -1213,6 +1248,9 @@ menufuncs.armor_list = {
       y = y + f_tilesize
       y = y + f_tilesize
       createbutton("battle_back",x,y,1,18,1,"<<<<<<","armor_list",3,2,buttonid,false,false,"Go back.")
+      table.insert(dynamic_structure,{{"battle_back"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   leave =
     function(parent,name,buttonid)
@@ -1226,11 +1264,14 @@ menufuncs.item_list = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      local dynamic_structure = {}
+
       local c = PARTY_MEMBERS[CURR]
       writetext("Select an item.",0,x,y,"rpg_imenu",true,2)
       y = y + f_tilesize
       for num,item in ipairs(PARTY_STATS.items) do
         local buttonid = createbutton("option_"..num,x,y,1,18,1,item.name.." x"..item.count,"item_list",3,2,buttonid,false,0,item.desc)
+        table.insert(dynamic_structure,{{"option_"..num}})
         local button = mmf.newObject(buttonid)
         buttonclick_list["option_"..num] = function()
           if ACTION[2][1] == nil then
@@ -1276,6 +1317,9 @@ menufuncs.item_list = {
       end
       y = y + f_tilesize
       createbutton("battle_back",x,y,1,18,1,"<<<<<<","item_list",3,2,buttonid,false,false,"Go back.")
+      table.insert(dynamic_structure,{{"battle_back"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   submenu_leave =
     function(parent,name,buttonid)
@@ -1300,6 +1344,7 @@ menufuncs.ability_list = {
     function(parent,name,buttonid)
       local x = screenw * 0.5
       local y = 5 * f_tilesize
+      local dynamic_structure = {}
       local c = PARTY_MEMBERS[CURR]
       writetext("Select an ability.",0,x,y,"rpg_amenu",true,2)
       y = y + f_tilesize
@@ -1314,6 +1359,7 @@ menufuncs.ability_list = {
         end
         final_cost = math.ceil(final_cost)
         createbutton("aoption_"..num,x,y,1,18,1,ability.name.." - "..final_cost.." SP","ability_list",3,2,buttonid,final_cost > c.sp,false,ability.bdesc)
+        table.insert(dynamic_structure,{{"aoption_"..num}})
         buttonclick_list["aoption_"..num] = function()
           ACTION[2][1] = ability
           ACTION[2][2] = final_cost
@@ -1332,6 +1378,9 @@ menufuncs.ability_list = {
       end
       y = y + f_tilesize
       createbutton("battle_back",x,y,1,18,1,"<<<<<<","ability_list",3,2,buttonid,false,false,"Go back.")
+      table.insert(dynamic_structure,{{"battle_back"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   submenu_leave =
     function(parent,name,buttonid)
@@ -1354,6 +1403,7 @@ menufuncs.target_select = {
       local x = screenw * 0.5
       local y = 8 * f_tilesize
       local c = PARTY_MEMBERS[CURR]
+      local dynamic_structure = {}
       writetext("Select a target.",0,x,y,"rpg_menu",true,2)
       local enemyrecommend = false
       local target = nil
@@ -1363,6 +1413,8 @@ menufuncs.target_select = {
       if ACTION[1] == "basic" or target == "enemy" or target == "enemies" then
         enemyrecommend = true
       end
+      local dynamic_structure_prow = {}
+      local dynamic_structure_erow = {}
       if target ~= "party" and target ~= "enemies" then
         x = screenw / (#PARTY_STATS.order * 2)
         y = 4 * f_tilesize
@@ -1375,6 +1427,7 @@ menufuncs.target_select = {
         for num,cid in ipairs(PARTY_STATS.order) do
           local c = PARTY_MEMBERS[cid]
           createbutton("poption_"..num,x,y,1,5,1,"^^^","target_select",colour1,colour2,buttonid,(c.hp <= 0) ~= (target == "dead"),false,"Select this target.")
+          table.insert(dynamic_structure_prow,{"poption_"..num})
           buttonclick_list["poption_"..num] = function()
             table.insert(ACTION[2],cid)
             table.insert(ACTION[2],true)
@@ -1394,6 +1447,7 @@ menufuncs.target_select = {
         for num,cid in ipairs(ENEMY_STATS.order) do
           local c = ENEMIES[cid]
           createbutton("eoption_"..num,x,y,1,5,1,"vvv","target_select",colour1,colour2,buttonid,(c.hp <= 0) ~= (target == "dead"),false,"Select this target.")
+          table.insert(dynamic_structure_erow,{"eoption_"..num})
           buttonclick_list["eoption_"..num] = function()
             table.insert(ACTION[2],cid)
             table.insert(ACTION[2],false)
@@ -1409,6 +1463,7 @@ menufuncs.target_select = {
           colour1,colour2 = 2,1
         end
         createbutton("poption_1",x,y,1,20,1,"^^^","target_select",colour1,colour2,buttonid,c.hp <= 0,false,"Select the party.")
+        table.insert(dynamic_structure_prow,{"poption_1"})
         buttonclick_list["poption_1"] = function()
           table.insert(ACTION[2],"party")
           closesubmenus()
@@ -1420,15 +1475,23 @@ menufuncs.target_select = {
           colour1,colour2 = 5,3
         end
         createbutton("eoption_1",x,y,1,20,1,"vvv","target_select",colour1,colour2,buttonid,c.hp <= 0,false,"Select the enemies")
+        table.insert(dynamic_structure_erow,{"eoption_1"})
         buttonclick_list["eoption_1"] = function()
           table.insert(ACTION[2],"enemies")
           closesubmenus()
           changemenu("party_do")
         end
       end
+
       x = screenw * 0.5
       y = 9 * f_tilesize
       createbutton("battle_back",x,y,1,18,1,"<<<<<<","target_select",3,2,buttonid,false,false,"Go back.")
+
+      table.insert(dynamic_structure,dynamic_structure_prow)
+      table.insert(dynamic_structure,{{"battle_back"}})
+      table.insert(dynamic_structure,dynamic_structure_erow)
+
+      buildmenustructure(dynamic_structure)
     end,
   leave =
     function(parent,name,buttonid)

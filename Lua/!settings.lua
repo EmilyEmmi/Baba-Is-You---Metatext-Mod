@@ -117,18 +117,20 @@ settingbutton() -- This doesn't work the first time for some reason, so we have 
 
 -- The menu
 menufuncs.metatext_settings = {
-  button = "mtxt_settings", -- Does this do anything?
-  escbutton = "mtxt_return", -- Doesn't work
+  button = "mtxt_settings",
+  escbutton = "mtxt_return",
   slide = {1,0},
   enter =
     function(parent,name,buttonid)
       MF_letterclear("leveltext")
-      MF_cursorvisible(0)
+
+      local dynamic_structure = {}
 
       local x = screenw * 0.5
       local y = 1.5 * f_tilesize
       writetext("$4,1Metatext Mod Settings",0,x,y,"settingsmenu",true,2)
       y = y + f_tilesize
+
       for i,setname in ipairs(metatext_settings_order) do
         local data = metatext_settings_list[setname]
         local disabled = false
@@ -143,11 +145,13 @@ menufuncs.metatext_settings = {
           local width = getdynamicbuttonwidth(langtext("yes"))
           local thisx = butx + ((#langtext("yes")/2)-1.5) * 10
           createbutton(data.buttonfunc .. "_0",thisx,y,2,width,1,langtext("yes"),name,3,2,buttonid,disabled,selected,data.tooltip,nil,true)
-          butx = thisx + 35 + (#langtext("yes")/2+1) * 10
+          butx = thisx + 55 + (#langtext("yes")/2+1) * 10
           width = getdynamicbuttonwidth(langtext("no"))
           thisx = butx + ((#langtext("no")/2)-1.5) * 10
           createbutton(data.buttonfunc .. "_1",thisx,y,2,width,1,langtext("no"),name,3,2,buttonid,disabled,(selected + 1) % 2,data.tooltip,nil,true)
+          table.insert(dynamic_structure,{{data.buttonfunc .. "_0"},{data.buttonfunc .. "_1"}})
         else
+          local dynamic_structure_row = {}
           local value = get_setting(setname) or -1
           local butx = 60
           for i,option in ipairs(data.options) do
@@ -159,12 +163,18 @@ menufuncs.metatext_settings = {
               selected = 1
             end
             createbutton(data.buttonfunc .. "_" .. i-1,thisx,y,2,width,1,option,name,3,2,buttonid,disabled,selected,tooltip,nil,true)
-            butx = thisx + 35 + (#option/2+1) * 10
+            butx = thisx + 55 + (#option/2+1) * 10
+            table.insert(dynamic_structure_row, {data.buttonfunc .. "_" .. i-1})
           end
+          table.insert(dynamic_structure,dynamic_structure_row)
         end
         y = y + f_tilesize
       end
+
       createbutton("mtxt_return",x,y,2,18,1,langtext("return"),name,3,2,buttonid)
+      table.insert(dynamic_structure,{{"mtxt_return"}})
+
+      buildmenustructure(dynamic_structure)
     end,
   leave =
     function(parent,name,buttonid)
