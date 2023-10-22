@@ -185,6 +185,10 @@ end
 -- Makes sure text units and meta# are considered special nouns
 function findnoun(noun,list_,ignoretext)
 	local list = list_ or nlist.full
+	if noun == nil then
+		print(debug.traceback())
+		return false
+	end
 
 	for i,v in ipairs(list) do
 		if (v == noun) or ((v == "group") and (string.sub(noun, 1, 5) == "group")) or (string.sub(noun,1,5) == "text_" and v == "text" and ignoretext ~= true) or (string.sub(noun,1,4) == "meta" and v == "all") then

@@ -1,30 +1,29 @@
 -- Use the in-game menu now.
 
-table.insert( mod_hook_functions["level_start"], function()
-
-metatext_fixquirks = get_setting("fix_quirks") --[[Set this to FALSE to:
+table.insert(mod_hook_functions["level_start"], function()
+	metatext_fixquirks = get_setting("fix_quirks") --[[Set this to FALSE to:
 Make TEXT/META# IS TELE link text units of the same type together rather than all text units included.
 (Removed as of v469) Make TEXT IS MORE allow text units to grow into other text units as long as they are not the same type.
 Make TEXT/META# IS GROUP, NOUN HAS/MAKE/BECOME GROUP make NOUN HAS/MAKE/BECOME every text included.
 Make TEXT/META# IS GROUP, NOUN NEAR GROUP force noun to be near every text included.]]
 
-metatext_overlaystyle = get_setting("overlay_style",true) --[[Has 3 options:
+	metatext_overlaystyle = get_setting("overlay_style", true) --[[Has 3 options:
 0 disables this feature.
 1 enables overlay if the "meta level" (the amount of times "text_" appears in the name excluding
 if the name ends with "text_") does not match the name of the object.
 Anything else always enables the overlay.]]
 
-metatext_textisword = get_setting("text_word") --Makes TEXT IS WORD a default rule, and breaking it will make text not parse.
+	metatext_textisword = get_setting("text_word") --Makes TEXT IS WORD a default rule, and breaking it will make text not parse.
 
-metatext_istextnometa = get_setting("is_nometa") --[[Makes METATEXT IS TEXT not turn the text object into it's metatext
+	metatext_istextnometa = get_setting("is_nometa") --[[Makes METATEXT IS TEXT not turn the text object into it's metatext
 counterpart, instead making it not transform.
 Not recommended to set to TRUE if you are not using the Meta/Unmeta addon.]]
 
-metatext_hasmaketextnometa = get_setting("hasmake_nometa") --[[Makes METATEXT HAS/MAKE TEXT not make the text object have/make
+	metatext_hasmaketextnometa = get_setting("hasmake_nometa") --[[Makes METATEXT HAS/MAKE TEXT not make the text object have/make
 it's metatext counterpart. Since you can't make Has/Make Meta/Unmeta, this is really only useful for
 consistency I guess.]]
 
-metatext_autogenerate = get_setting("auto_gen",true) --[[Tries to add more metatext to the object palette if it does not exist.
+	metatext_autogenerate = get_setting("auto_gen", true) --[[Tries to add more metatext to the object palette if it does not exist.
 Can only add up to 35 additional objects. REQUIRES metaunmeta.lua.
 Comes with the following options:
 0 disables this feature.
@@ -33,39 +32,38 @@ Comes with the following options:
 Anything else always uses the default sprite. If you choose this, you're gonna want the overlay on.
 Note that if the nonexistant text is available in the editor object list, that will be referenced instead.]]
 
-metatext_includenoun = get_setting("include_noun") --Includes nouns in NOT META#.
+	metatext_includenoun = get_setting("include_noun") --Includes nouns in NOT META#.
 
-metatext_egg = get_setting("easter_egg") --Easter egg. Set to FALSE to disable.
-
+	metatext_egg = get_setting("easter_egg")       --Easter egg. Set to FALSE to disable.
 end
 )
 
 -- New function, checks if rule relies on certain noun. Based off of hasfeature()
-function checkiftextrule(rule1,rule2,rule3,unitid,findtextrule_,findtag_)
-  local findtag = "text"
-  local findtextrule = false
-  if findtextrule_ ~= nil then
-    findtextrule = findtextrule_
-  end
-  if findtag_ ~= nil then
-    findtag = findtag_
-  end
-  if (featureindex[rule3] ~= nil) and (rule2 ~= nil) and (rule1 ~= nil) then
-		for i,rules in ipairs(featureindex[rule3]) do
+function checkiftextrule(rule1, rule2, rule3, unitid, findtextrule_, findtag_)
+	local findtag = "text"
+	local findtextrule = false
+	if findtextrule_ ~= nil then
+		findtextrule = findtextrule_
+	end
+	if findtag_ ~= nil then
+		findtag = findtag_
+	end
+	if (featureindex[rule3] ~= nil) and (rule2 ~= nil) and (rule1 ~= nil) then
+		for i, rules in ipairs(featureindex[rule3]) do
 			local rule = rules[1]
 			local conds = rules[2]
-      local tags = rules[4]
-      local foundtag = false
-      for num,tag in pairs(tags) do
-        if tag == findtag then
-          foundtag = true
-          break
-        end
-      end
+			local tags = rules[4]
+			local foundtag = false
+			for num, tag in pairs(tags) do
+				if tag == findtag then
+					foundtag = true
+					break
+				end
+			end
 
 			if (conds[1] ~= "never") and (foundtag == findtextrule) then
 				if (rule[1] == rule1) and (rule[2] == rule2) and (rule[3] == rule3) then
-					if testcond(conds,unitid) then
+					if testcond(conds, unitid) then
 						return findtextrule
 					end
 				end
@@ -76,63 +74,67 @@ function checkiftextrule(rule1,rule2,rule3,unitid,findtextrule_,findtag_)
 end
 
 -- New function that writes the meta level of an object in the top right corner, if enabled.
+local overlayIds = {}
 function writemetalevel()
-  if metatext_overlaystyle ~= 0 and not (generaldata.values[MODE] == 5) then
-    MF_letterclear("metaoverlay")
-    for id,unit in pairs(units) do
-      local unitname = unit.strings[UNITNAME]
-      if string.sub(unitname,1,10) == "text_text_" and unit.values[TYPE] == 0 and unit.visible then
-        local metalevel = getmetalevel(unitname)
-        local show = true
-        if metatext_overlaystyle == 1 then
-          local c = changes[unit.className] or {}
-          if c.image == nil then
-            show = false
-          else
-            local imetalevel = getmetalevel(c.image)
-            if imetalevel == metalevel then
-              show = false
-            end
-          end
-        end
-        if show then
-          local color = {4,1}
-          local unitcolor1,unitcolor2 = getcolour(unit.fixed)
-          if unit.colours ~= nil and #unit.colours > 0 then
-            local rosytaken = false
-            for z,c in pairs(unit.colours) do
-              unitcolor1,unitcolor2 = c[1],c[2]
-              if tonumber(unitcolor1) == 4 and tonumber(unitcolor2) == 2 then
-                rosytaken = true
-                if color == {4,2} then
-                  color = {4,0}
-                  break
-                end
-              end
-              if color[1] == tonumber(unitcolor1) and color[2] == tonumber(unitcolor2) then
-                if rosytaken then
-                  color = {4,0}
-                  break
-                else
-                  color = {4,2}
-                end
-              end
-            end
-          else
-            if unit.active == true or generaldata.values[MODE] == 5 then
-              unitcolor1,unitcolor2 = getcolour(unit.fixed,"active")
-            end
-            if color[1] == tonumber(unitcolor1) and color[2] == tonumber(unitcolor2) then
-              color = {4,2}
-            end
-          end
-          writetext(metalevel,unit.fixed,(8 * spritedata.values[TILEMULT]),-(6 * spritedata.values[TILEMULT]),"metaoverlay",true,1,true,color)
-        end
-      end
-    end
-  end
+	if metatext_overlaystyle ~= 0 and not (generaldata.values[MODE] == 5) then
+		MF_letterclear("metaoverlay")
+		for id, unit in pairs(units) do
+			local unitname = unit.strings[UNITNAME]
+			if string.sub(unitname, 1, 10) == "text_text_" and unit.values[TYPE] == 0 and unit.visible then
+				local metalevel = getmetalevel(unitname)
+				local show = true
+				if metatext_overlaystyle == 1 then
+					local c = changes[unit.className] or {}
+					if c.image == nil then
+						show = false
+					else
+						local imetalevel = getmetalevel(c.image)
+						if imetalevel == metalevel then
+							show = false
+						end
+					end
+				end
+				if show then
+					local color = { 4, 1 }
+					local unitcolor1, unitcolor2 = getcolour(unit.fixed)
+					if unit.colours ~= nil and #unit.colours > 0 then
+						local rosytaken = false
+						for z, c in pairs(unit.colours) do
+							unitcolor1, unitcolor2 = c[1], c[2]
+							if tonumber(unitcolor1) == 4 and tonumber(unitcolor2) == 2 then
+								rosytaken = true
+								if color == { 4, 2 } then
+									color = { 4, 0 }
+									break
+								end
+							end
+							if color[1] == tonumber(unitcolor1) and color[2] == tonumber(unitcolor2) then
+								if rosytaken then
+									color = { 4, 0 }
+									break
+								else
+									color = { 4, 2 }
+								end
+							end
+						end
+					else
+						if unit.active == true or generaldata.values[MODE] == 5 then
+							unitcolor1, unitcolor2 = getcolour(unit.fixed, "active")
+						end
+						if color[1] == tonumber(unitcolor1) and color[2] == tonumber(unitcolor2) then
+							color = { 4, 2 }
+						end
+					end
+					writetext(metalevel, unit.fixed, (8 * unit.scaleX),
+							-(6 * unit.scaleY), "metaoverlay", true,
+							1, true, color)
+				end
+			end
+		end
+	end
 end
-table.insert( mod_hook_functions["always"], writemetalevel)
+
+table.insert(mod_hook_functions["always"], writemetalevel)
 
 -- Allows TEXT_ to also act as a letter, and enables TEXT IS WORD behavior with letters if enabled
 function formlettermap()
@@ -142,43 +144,43 @@ function formlettermap()
 	local letterunitlist = {}
 
 	if (#letterunits > 0) then
-		for i,unitid in ipairs(letterunits) do
+		for i, unitid in ipairs(letterunits) do
 			local unit = mmf.newObject(unitid)
 
 			if (unit.values[TYPE] == 5 or (unit.values[TYPE] == 4 and unit.strings[UNITNAME] == "text_text_")) and (unit.flags[DEAD] == false) then
-        local valid = true
-        if metatext_textisword and (#wordunits > 0) then
-          valid = false
-          for c,d in ipairs(wordunits) do
-            if (unitid == d[1]) and testcond(d[2],d[1]) then
-              valid = true
-              break
-            end
-          end
-        end
-        if valid then
-          local x,y = unit.values[XPOS],unit.values[YPOS]
-          local tileid = x + y * roomsizex
+				local valid = true
+				if metatext_textisword and (#wordunits > 0) then
+					valid = false
+					for c, d in ipairs(wordunits) do
+						if (unitid == d[1]) and testcond(d[2], d[1]) then
+							valid = true
+							break
+						end
+					end
+				end
+				if valid then
+					local x, y = unit.values[XPOS], unit.values[YPOS]
+					local tileid = x + y * roomsizex
 
-          local name = string.sub(unit.strings[UNITNAME], 6)
+					local name = string.sub(unit.strings[UNITNAME], 6)
 
-          if (lettermap[tileid] == nil) then
-            lettermap[tileid] = {}
-          end
+					if (lettermap[tileid] == nil) then
+						lettermap[tileid] = {}
+					end
 
-          table.insert(lettermap[tileid], {name, unitid})
-        end
+					table.insert(lettermap[tileid], { name, unitid })
+				end
 			end
 		end
 
-		for tileid,v in pairs(lettermap) do
+		for tileid, v in pairs(lettermap) do
 			local x = math.floor(tileid % roomsizex)
 			local y = math.floor(tileid / roomsizex)
 
-			local ux,uy = x,y-1
-			local lx,ly = x-1,y
-			local dx,dy = x,y+1
-			local rx,ry = x+1,y
+			local ux, uy = x, y - 1
+			local lx, ly = x - 1, y
+			local dx, dy = x, y + 1
+			local rx, ry = x + 1, y
 
 			local tidr = rx + ry * roomsizex
 			local tidu = ux + uy * roomsizex
@@ -197,7 +199,7 @@ function formlettermap()
 			end
 
 			if (#cobjects > 0) then
-				for a,b in ipairs(v) do
+				for a, b in ipairs(v) do
 					local n = b[1]
 					if (cobjects[n] ~= nil) then
 						continuer = true
@@ -208,11 +210,11 @@ function formlettermap()
 			end
 
 			if (lettermap[tidl] == nil) and continuer then
-				letterunitlist = formletterunits(x,y,lettermap,1,letterunitlist)
+				letterunitlist = formletterunits(x, y, lettermap, 1, letterunitlist)
 			end
 
 			if (lettermap[tidu] == nil) and continued then
-				letterunitlist = formletterunits(x,y,lettermap,2,letterunitlist)
+				letterunitlist = formletterunits(x, y, lettermap, 2, letterunitlist)
 			end
 		end
 
@@ -220,19 +222,20 @@ function formlettermap()
 			letterunitlist = cullnotes(letterunitlist)
 		end
 
-		for i,v in ipairs(letterunitlist) do
+		for i, v in ipairs(letterunitlist) do
 			local x = v[3]
 			local y = v[4]
 			local w = v[6]
 			local dir = v[5]
 
 			local dr = dirs[dir]
-			local ox,oy = dr[1],dr[2]
+			local ox, oy = dr[1], dr[2]
 
-      --[[
+			--[[
       MF_debug(x,y,1)
       MF_alert("In database: " .. v[1] .. ", dir " .. tostring(v[5]))
-      ]]--
+      ]]
+			--
 
 			local tileid = x + y * roomsizex
 
@@ -240,7 +243,7 @@ function formlettermap()
 				letterunits_map[tileid] = {}
 			end
 
-			table.insert(letterunits_map[tileid], {v[1], v[2], v[3], v[4], v[5], v[6], v[7]})
+			table.insert(letterunits_map[tileid], { v[1], v[2], v[3], v[4], v[5], v[6], v[7] })
 
 			if (w > 1) then
 				local endtileid = (x + ox * (w - 1)) + (y + oy * (w - 1)) * roomsizex
@@ -249,14 +252,15 @@ function formlettermap()
 					letterunits_map[endtileid] = {}
 				end
 
-				table.insert(letterunits_map[endtileid], {v[1], v[2], v[3], v[4], v[5], v[6], v[7]})
+				table.insert(letterunits_map[endtileid], { v[1], v[2], v[3], v[4], v[5], v[6], v[7] })
 			end
 		end
 	end
 end
+
 -- Fix a bug where TEXT_ spells itself, causing rule duplication
 -- unfortunatly, that means TEXT_ cannot be spelled with letters
-function findletterwords(word_,wordpos_,subword_,mainbranch_)
+function findletterwords(word_, wordpos_, subword_, mainbranch_)
 	local word = word_
 	local subword = subword_
 	local wordpos = wordpos_ or 0
@@ -274,7 +278,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 	local result = {}
 
 	if (string.len(word) > 1) then
-		for i,v in pairs(unitreference) do
+		for i, v in pairs(unitreference) do
 			local name = i
 
 			if (string.len(name) > 5) and (string.sub(name, 1, 5) == "text_") then
@@ -283,7 +287,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 
 			if (string.len(word) <= string.len(name)) and (string.sub(name, 1, string.len(word)) == word) then
 				if (string.len(word) == string.len(name)) then
-					table.insert(fullwords, {name, 0})
+					table.insert(fullwords, { name, 0 })
 					found = true
 				else
 					found = true
@@ -292,17 +296,16 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 
 			if (wordpos > 0) and (string.len(word) >= 2) and mainbranch then
 				if (string.len(name) >= string.len(subword)) and (string.sub(name, 1, string.len(subword)) == subword) then
-
 					if (subword == name) then
-						table.insert(fullwords, {name, wordpos + 1})
+						table.insert(fullwords, { name, wordpos + 1 })
 						foundsub = true
 					else
-						table.insert(newbranches, {subword, wordpos})
+						table.insert(newbranches, { subword, wordpos })
 						foundsub = true
 					end
 
 
-					table.insert(newbranches, {subword, wordpos})
+					table.insert(newbranches, { subword, wordpos })
 					foundsub = true
 				end
 			end
@@ -310,7 +313,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 	end
 
 	if (string.len(word) > 0) then
-		for c,d in pairs(cobjects) do
+		for c, d in pairs(cobjects) do
 			if (c ~= 1) and (string.len(tostring(c)) > 0) then
 				local name = c
 
@@ -320,7 +323,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 
 				if (string.len(word) <= string.len(name)) and (string.sub(name, 1, string.len(word)) == word) then
 					if (string.len(word) == string.len(name)) then
-						table.insert(fullwords_c, {name, 0})
+						table.insert(fullwords_c, { name, 0 })
 						found = true
 					else
 						found = true
@@ -329,7 +332,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 
 				if (wordpos > 0) and (string.len(word) >= 2) and mainbranch then
 					if (string.len(name) >= string.len(subword)) and (string.sub(name, 1, string.len(subword)) == subword) then
-						table.insert(newbranches, {subword, wordpos})
+						table.insert(newbranches, { subword, wordpos })
 						foundsub = true
 					end
 				end
@@ -342,7 +345,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 	end
 
 	if (#fullwords > 0) then
-		for i,v in ipairs(fullwords) do
+		for i, v in ipairs(fullwords) do
 			local text = v[1]
 			local textpos = v[2]
 			local alttext = "text_" .. text
@@ -361,10 +364,10 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 			end
 
 			if (realname ~= nil) then
-				local name = getactualdata_objlist(realname,"name")
-				local wtype = getactualdata_objlist(realname,"type")
+				local name = getactualdata_objlist(realname, "name")
+				local wtype = getactualdata_objlist(realname, "type")
 
-				if string.sub(name,-5) ~= "text_" and ((name == text) or (name == alttext)) then
+				if string.sub(name, -5) ~= "text_" and ((name == text) or (name == alttext)) then
 					if (wtype ~= 5) then
 						if (realname_general ~= nil) then
 							objectlist[text] = 1
@@ -372,7 +375,7 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 							objectlist[text] = 1
 						end
 
-						table.insert(result, {name, wtype, textpos})
+						table.insert(result, { name, wtype, textpos })
 					end
 				end
 			end
@@ -380,179 +383,186 @@ function findletterwords(word_,wordpos_,subword_,mainbranch_)
 	end
 
 	if (#fullwords_c > 0) then
-		for i,v in ipairs(fullwords_c) do
+		for i, v in ipairs(fullwords_c) do
 			if (word == v[1]) then
-				table.insert(result, {v[1], 8, v[2]})
+				table.insert(result, { v[1], 8, v[2] })
 			end
 		end
 	end
 
-	return found,result,newbranches
+	return found, result, newbranches
 end
 
 -- Try to add more metatext if it doesn't exist.
-function tryautogenerate(want,have)
-  if want == "text_" then
-    return false -- fix silly edgecase
-  elseif metatext_autogenerate ~= 0 then
-    if editor_objlist_reference[want] ~= nil then
-      local data = editor_objlist[editor_objlist_reference[want]]
-      local root = data.sprite_in_root
-      if root == nil then
-        root = true
-      end
-      local colour = data.colour
-      local active = data.colour_active
-      local colourasstring = colour[1] .. "," .. colour[2]
-      local activeasstring = active[1] .. "," .. active[2]
-      local new =
-      {
-          want,
-          data.sprite or data.name,
-          colourasstring,
-          data.tiling,
-          0,
-          "text",
-          activeasstring,
-          root,
-          data.layer or 10,
-          nil,
-      }
-      local target = "120"
-      while target ~= "156" do
-        local done = true
-        for objname,data in pairs(objectpalette) do
-          if data == "object" .. target then
-            done = false
-            target = tostring(tonumber(target) + 1)
-            while string.len(target) < 3 do
-              target = "0" .. target
-            end
-          end
-        end
-        if done then break end
-      end
-      if target == "156" then
-        return false
-      else
-        savechange("object" .. target,new,nil,true)
-        dochanges_full("object" .. target)
-        objectpalette[want] = "object" .. target
-        objectlist[want] = 1
-        if root == true then
-          fullunitlist[want] = "fixroot" .. (data.sprite or data.name)
-        else
-          fullunitlist[want] = "fix" .. (data.sprite or data.name)
-        end
-        return true
-      end
-    elseif have == nil then
-      local test = want
-      local count = 0
-      if objectpalette["text_" .. test] == nil then
-        while objectpalette[test] == nil do
-          if string.sub(test,1,5) == "text_" then
-            test = string.sub(test,6)
-            count = count + 1
-          else
-            local lowestlevel = "text_" .. test
-            if lowestlevel == "text_" then
-              lowestlevel = "text_text_"
-            end
-            local SAFETY = 0
-            while (not getmat_text(lowestlevel)) and SAFETY < 1000 do
-              lowestlevel = "text_" .. lowestlevel
-              SAFETY = SAFETY + 1
-            end
-            -- this shouldn't happen, but just in case
-            if SAFETY >= 1000 then
-              return false
-            end
-            have = lowestlevel
-            break
-          end
-        end
-        if have == nil then
-          have = test
-        end
-      else
-        have = "text_" .. test
-      end
-    end
-    print("Trying to generate "..want.." from "..have..".")
-    local realname = objectpalette[have]
-    local root = getactualdata_objlist(realname,"sprite_in_root")
-    local colour = getactualdata_objlist(realname,"colour")
-    local active = getactualdata_objlist(realname,"active")
-    if colour == nil then
-      return false
-    end
-    local sprite = getactualdata_objlist(realname,"sprite",true) or getactualdata_objlist(realname,"name")
-    local colourasstring = colour[1] .. "," .. colour[2]
-    local activeasstring = active[1] .. "," .. active[2]
-    local new =
-    {
-        want,
-        sprite,
-        colourasstring,
-        getactualdata_objlist(realname,"tiling"),
-        0,
-        "text",
-        activeasstring,
-        root,
-        getactualdata_objlist(realname,"layer"),
-        nil,
-    }
-    if metatext_autogenerate == 1 or metatext_autogenerate == 2 then
-      local spritewanted = string.rep("text_",getmetalevel(want)+1) .. string.gsub(sprite,"text_","")
-      if MF_findsprite(spritewanted.."_0_1.png",false) then
-        sprite = spritewanted
-        new[2] = sprite
-        root = false
-        new[8] = root
-      elseif metatext_autogenerate == 2 then
-        return false
-      end
-    end
-    local target = "120"
-    while target ~= "156" do
-      local done = true
-      for objname,data in pairs(objectpalette) do
-        if data == "object" .. target then
-          done = false
-          target = tostring(tonumber(target) + 1)
-          while string.len(target) < 3 do
-            target = "0" .. target
-          end
-        end
-      end
-      if done then break end
-    end
-    if target == "156" then
-      return false
-    else
-      savechange("object" .. target,new,nil,true)
-      dochanges_full("object" .. target)
-      objectpalette[want] = "object" .. target
-      objectlist[want] = 1
-      if root == true then
-        fullunitlist[want] = "fixroot" .. sprite
-      else
-        fullunitlist[want] = "fix" .. sprite
-      end
-      return true
-    end
-  end
-  return false
+function tryautogenerate(want, have)
+	if want == "text_" then
+		return false -- fix silly edgecase
+	elseif metatext_autogenerate ~= 0 then
+		if editor_objlist_reference[want] ~= nil then
+			local data = editor_objlist[editor_objlist_reference[want]]
+			local root = data.sprite_in_root
+			if root == nil then
+				root = true
+			end
+			local colour = data.colour
+			local active = data.colour_active
+			local colourasstring = colour[1] .. "," .. colour[2]
+			local activeasstring = active[1] .. "," .. active[2]
+			local new =
+			{
+				want,
+				data.sprite or data.name,
+				colourasstring,
+				data.tiling,
+				data.type or 0,
+				"text",
+				activeasstring,
+				root,
+				data.layer or 10,
+				nil,
+			}
+			local target = "120"
+			while target ~= "156" do
+				local done = true
+				for objname, data in pairs(objectpalette) do
+					if data == "object" .. target then
+						done = false
+						target = tostring(tonumber(target) + 1)
+						while string.len(target) < 3 do
+							target = "0" .. target
+						end
+					end
+				end
+				if done then break end
+			end
+			if target == "156" then
+				return false
+			else
+				savechange("object" .. target, new, nil, true)
+				dochanges_full("object" .. target)
+				objectpalette[want] = "object" .. target
+				objectlist[want] = 1
+				if root == true then
+					fullunitlist[want] = "fixroot" .. (data.sprite or data.name)
+				else
+					fullunitlist[want] = "fix" .. (data.sprite or data.name)
+				end
+				return true
+			end
+		elseif have == nil then
+			local test = want
+			local count = 0
+			if objectpalette["text_" .. test] == nil then
+				while objectpalette[test] == nil do
+					if string.sub(test, 1, 5) == "text_" then
+						test = string.sub(test, 6)
+						count = count + 1
+					else
+						local lowestlevel = "text_" .. test
+						if lowestlevel == "text_" then
+							lowestlevel = "text_text_"
+						end
+						local SAFETY = 0
+						while (not getmat_text(lowestlevel)) and SAFETY < 1000 do
+							lowestlevel = "text_" .. lowestlevel
+							SAFETY = SAFETY + 1
+						end
+						-- this shouldn't happen, but just in case
+						if SAFETY >= 1000 then
+							return false
+						end
+						have = lowestlevel
+						break
+					end
+				end
+				if have == nil then
+					have = test
+				end
+			else
+				have = "text_" .. test
+			end
+		end
+		print("Trying to generate " .. want .. " from " .. have .. ".")
+		local realname = objectpalette[have]
+		local root = getactualdata_objlist(realname, "sprite_in_root")
+		local colour = getactualdata_objlist(realname, "colour")
+		local active = getactualdata_objlist(realname, "active")
+		if colour == nil then
+			return false
+		end
+		local sprite = getactualdata_objlist(realname, "sprite", true) or getactualdata_objlist(realname, "name")
+		local colourasstring = colour[1] .. "," .. colour[2]
+		local activeasstring = active[1] .. "," .. active[2]
+		local new =
+		{
+			want,
+			sprite,
+			colourasstring,
+			getactualdata_objlist(realname, "tiling"),
+			0,
+			"text",
+			activeasstring,
+			root,
+			getactualdata_objlist(realname, "layer"),
+			nil,
+		}
+		if metatext_autogenerate == 1 or metatext_autogenerate == 2 then
+			local spritewanted = string.rep("text_", getmetalevel(want) + 1) .. string.gsub(sprite, "text_", "")
+			if MF_findsprite(spritewanted .. "_0_1.png", false) then
+				sprite = spritewanted
+				new[2] = sprite
+				root = false
+				new[8] = root
+			elseif metatext_autogenerate == 2 then
+				return false
+			end
+		end
+		local target = "120"
+		while target ~= "156" do
+			local done = true
+			for objname, data in pairs(objectpalette) do
+				if data == "object" .. target then
+					done = false
+					target = tostring(tonumber(target) + 1)
+					while string.len(target) < 3 do
+						target = "0" .. target
+					end
+				end
+			end
+			if done then break end
+		end
+		if target == "156" then
+			return false
+		else
+			savechange("object" .. target, new, nil, true)
+			dochanges_full("object" .. target)
+			objectpalette[want] = "object" .. target
+			objectlist[want] = 1
+			if root == true then
+				fullunitlist[want] = "fixroot" .. sprite
+			else
+				fullunitlist[want] = "fix" .. sprite
+			end
+			return true
+		end
+	end
+	return false
 end
 
 -- Allows metatext to be named in editor.
+if old_editor_trynamechange == nil then
+	old_editor_trynamechange = editor_trynamechange
+end
 function editor_trynamechange(object,newname_,fixed,objlistid,oldname_)
 	local valid = true
 
 	local newname = newname_ or "error"
 	local oldname = oldname_ or "error"
 	local checking = true
+
+	if (newname:sub(1,1) == "$") then -- support for raw rename mod
+		return old_editor_trynamechange(object,newname_,fixed,objlistid,oldname_)
+	end
 
 	newname = string.gsub(newname, "_", "UNDERDASH")
 	newname = string.gsub(newname, "%W", "")
@@ -590,33 +600,37 @@ function editor_trynamechange(object,newname_,fixed,objlistid,oldname_)
 		savechange(object,{newname},fixed)
 		MF_updateobjlistname_hack(objlistid,newname)
 
-    if string.find(newname, "text_text_") == nil then
-  		for i,v in ipairs(editor_currobjlist) do
-  			if (v.object == object) then
-  				v.name = newname
-  			end
+		-- we're gonna change every layer
+		local textlessName, metalevel = string.gsub(oldname, "text_", "")
+		if string.sub(oldname, -5) == "text_" then
+			metalevel = metalevel - 1
+			textlessName = "text_"..textlessName
+		end
+		newname = string.gsub(newname, "text_", "", metalevel)
+		
+		for i,v in ipairs(editor_currobjlist) do
+			--[[if (v.object == object) then -- idk what this does, I'm just gonna disable this
+				v.name = newname
+			end]]
 
-  			if (v.name == "text_" .. oldname) then
-  				v.name = "text_" .. newname
-  				local vid = MF_create(v.object)
-  				savechange(v.object,{v.name},vid)
-  				MF_cleanremove(vid)
+			local nTextlessName, nMetalevel = string.gsub(v.name, "text_", "")
+			if string.sub(v.name, -5) == "text_" then
+				nMetalevel = nMetalevel - 1
+				nTextlessName = "text_"..nTextlessName
+			end
 
-  				MF_alert("Found text_" .. oldname .. ", changing to text_" .. newname)
+			if (nTextlessName == textlessName) then
+				local tOldname = v.name
+				v.name = string.rep("text_",nMetalevel) .. newname
+				local vid = MF_create(v.object)
+				savechange(v.object,{v.name},vid)
+				MF_cleanremove(vid)
 
-  				MF_updateobjlistname_byname("text_" .. oldname,"text_" .. newname)
-  			elseif (string.sub(oldname, 1, 5) == "text_") and (v.name == string.sub(oldname, 6)) and (string.sub(newname, 1, 5) == "text_") then
-  				v.name = string.sub(newname, 6)
-  				local vid = MF_create(v.object)
-  				savechange(v.object,{v.name},vid)
-  				MF_cleanremove(vid)
+				MF_alert("Found " .. tOldname .. ", changing to " .. v.name)
 
-  				MF_alert("Found " .. oldname .. ", changing to " .. newname)
-
-  				MF_updateobjlistname_byname(string.sub(oldname, 6),string.sub(newname, 6))
-  			end
-  		end
-    end
+				MF_updateobjlistname_byname(tOldname,v.name)
+			end
+		end
 	end
 
 	return valid
@@ -628,7 +642,7 @@ function getunitverbtargets(rule2)
 	local result = {}
 
 	if (featureindex[rule2] ~= nil) then
-		for i,v in ipairs(featureindex[rule2]) do
+		for i, v in ipairs(featureindex[rule2]) do
 			local rule = v[1]
 			local conds = v[2]
 
@@ -636,26 +650,26 @@ function getunitverbtargets(rule2)
 
 			local isnot = string.sub(rule[3], 1, 4)
 
-			if (rule[2] == rule2) and (conds[1] ~= "never") and (findnoun(rule[1],nlist.brief) == false) and (isnot ~= "not ") and (rule[1] ~= "text") then
+			if (rule[2] == rule2) and (conds[1] ~= "never") and (findnoun(rule[1], nlist.brief) == false) and (isnot ~= "not ") and (rule[1] ~= "text") then
 				if (group[name] == nil) then
 					group[name] = {}
 				end
 
-				table.insert(group[name], {rule[3], conds})
+				table.insert(group[name], { rule[3], conds })
 			end
 		end
 
-		for name,v in pairs(group) do
+		for name, v in pairs(group) do
 			if (string.sub(name, 1, 4) ~= "not ") then
 				if (name ~= "empty") then
 					local fgroupmembers = unitlists[name] or {}
 					local finalgroup = {}
 
-					for a,b in ipairs(fgroupmembers) do
+					for a, b in ipairs(fgroupmembers) do
 						local myverbs = {}
 
-						for c,d in ipairs(v) do
-							if testcond(d[2],b) then
+						for c, d in ipairs(v) do
+							if testcond(d[2], b) then
 								local unit = mmf.newObject(b)
 
 								if (unit.flags[DEAD] == false) then
@@ -664,30 +678,30 @@ function getunitverbtargets(rule2)
 							end
 						end
 
-						table.insert(finalgroup, {b, myverbs})
+						table.insert(finalgroup, { b, myverbs })
 					end
 
-					table.insert(result, {name, finalgroup})
+					table.insert(result, { name, finalgroup })
 				else
 					local empties = findempty()
 					local finalgroup = {}
 
 					if (#empties > 0) then
-						for a,b in ipairs(empties) do
+						for a, b in ipairs(empties) do
 							local x = math.floor(b % roomsizex)
 							local y = math.floor(b / roomsizex)
 							local myverbs = {}
 
-							for c,d in ipairs(v) do
-								if testcond(d[2],2,x,y) then
+							for c, d in ipairs(v) do
+								if testcond(d[2], 2, x, y) then
 									table.insert(myverbs, d[1])
 								end
 							end
 
-							table.insert(finalgroup, {b, myverbs})
+							table.insert(finalgroup, { b, myverbs })
 						end
 
-						table.insert(result, {name, finalgroup})
+						table.insert(result, { name, finalgroup })
 					end
 				end
 			end
@@ -699,15 +713,15 @@ end
 
 -- This fixes this really weird bug where the game tries to convert particles and text.
 olddoconvert = doconvert
-function doconvert(data,extrarule_)
-  local unitid = data[1]
-  if unitid ~= 2 then
-    local unit = mmf.newObject(unitid)
-    if unit.strings[UNITNAME] == "" then
-      return
-    end
-  end
-  olddoconvert(data,extrarule_)
+function doconvert(data, extrarule_)
+	local unitid = data[1]
+	if unitid ~= 2 then
+		local unit = mmf.newObject(unitid)
+		if unit.strings[UNITNAME] == "" then
+			return
+		end
+	end
+	olddoconvert(data, extrarule_)
 end
 
 --[[ Gets the meta level of a string
@@ -720,16 +734,16 @@ Examples:
 "text_text_text_" = 1
 ]]
 function getmetalevel(string)
-  local _,metalevel = string.gsub(string,"text_","text_")
-  if string.sub(string,-5) == "text_" then
-    metalevel = metalevel - 1
-  end
-  metalevel = metalevel - 1
-  return metalevel
+	local _, metalevel = string.gsub(string, "text_", "text_")
+	if string.sub(string, -5) == "text_" then
+		metalevel = metalevel - 1
+	end
+	metalevel = metalevel - 1
+	return metalevel
 end
 
 -- Remove lines that include "text" rules if rule1 starts with "text_".
-function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
+function hasfeature(rule1, rule2, rule3, unitid, x, y, checkedconds, ignorebroken_)
 	local ignorebroken = false
 	if (ignorebroken_ ~= nil) then
 		ignorebroken = ignorebroken_
@@ -737,13 +751,13 @@ function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
 
 	if (rule1 ~= nil) and (rule2 ~= nil) and (rule3 ~= nil) then
 		if (featureindex[rule1] ~= nil) then
-			for i,rules in ipairs(featureindex[rule1]) do
+			for i, rules in ipairs(featureindex[rule1]) do
 				local rule = rules[1]
 				local conds = rules[2]
 
 				if (conds[1] ~= "never") then
 					if (rule[1] == rule1) and (rule[2] == rule2) and (rule[3] == rule3) then
-						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+						if testcond(conds, unitid, x, y, nil, nil, checkedconds, ignorebroken) then
 							return true
 						end
 					end
@@ -770,13 +784,13 @@ function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
 
 	if (rule3 ~= nil) and (rule2 ~= nil) and (rule1 ~= nil) then
 		if (featureindex[rule3] ~= nil) then
-			for i,rules in ipairs(featureindex[rule3]) do
+			for i, rules in ipairs(featureindex[rule3]) do
 				local rule = rules[1]
 				local conds = rules[2]
 
 				if (conds[1] ~= "never") then
 					if (rule[1] == rule1) and (rule[2] == rule2) and (rule[3] == rule3) then
-						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+						if testcond(conds, unitid, x, y, nil, nil, checkedconds, ignorebroken) then
 							return true
 						end
 					end
@@ -784,7 +798,7 @@ function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
 			end
 		end
 
-    --[[ No bad don't
+		--[[ No bad don't
 		if (string.sub(rule3,1,5) == "text_") and (featureindex["text"] ~= nil) then
 			for i,rules in ipairs(featureindex["text"]) do
 				local rule = rules[1]
@@ -805,12 +819,12 @@ function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
 		local usable = false
 
 		if (featureindex[rule1] ~= nil) then
-			for i,rules in ipairs(featureindex[rule1]) do
+			for i, rules in ipairs(featureindex[rule1]) do
 				local rule = rules[1]
 				local conds = rules[2]
 
 				if (conds[1] ~= "never") then
-					for a,mat in pairs(objectlist) do
+					for a, mat in pairs(objectlist) do
 						if (a == rule[1]) then
 							usable = true
 							break
@@ -818,7 +832,7 @@ function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
 					end
 
 					if (rule[1] == rule1) and (rule[2] == rule2) and usable then
-						if testcond(conds,unitid,x,y,nil,nil,checkedconds,ignorebroken) then
+						if testcond(conds, unitid, x, y, nil, nil, checkedconds, ignorebroken) then
 							return true
 						end
 					end
@@ -831,45 +845,45 @@ function hasfeature(rule1,rule2,rule3,unitid,x,y,checkedconds,ignorebroken_)
 end
 
 -- Fix issue with TEXT MAKE TEXT
-function getunitswithverb(rule2,ignorethese_,checkedconds)
+function getunitswithverb(rule2, ignorethese_, checkedconds)
 	local group = {}
 	local result = {}
 	local ignorethese = ignorethese_ or {}
 
 	if (featureindex[rule2] ~= nil) then
-		for i,v in ipairs(featureindex[rule2]) do
+		for i, v in ipairs(featureindex[rule2]) do
 			local rule = v[1]
 			local conds = v[2]
 
 			local name = rule[1]
 
-			if (rule[2] == rule2) and (conds[1] ~= "never") and (findnoun(rule[1],nlist.brief) == false) and (string.sub(rule[3], 1, 4) ~= "not ") then
+			if (rule[2] == rule2) and (conds[1] ~= "never") and (findnoun(rule[1], nlist.brief) == false) and (string.sub(rule[3], 1, 4) ~= "not ") then
 				if (group[name] == nil) then
 					group[name] = {}
 				end
 
-				table.insert(group[name], {rule[3], conds})
+				table.insert(group[name], { rule[3], conds })
 			end
 		end
 
-		for i,v in pairs(group) do
+		for i, v in pairs(group) do
 			if (string.sub(i, 1, 4) ~= "not ") and i ~= "text" and string.sub(i, 1, 4) ~= "meta" then -- changed line
 				if (i ~= "empty") then
 					local name = i
 					local fgroupmembers = unitlists[name]
 
 					if (fgroupmembers ~= nil) and (#fgroupmembers > 0) then
-						for c,d in ipairs(v) do
-							table.insert(result, {d[1],{},name})
+						for c, d in ipairs(v) do
+							table.insert(result, { d[1], {}, name })
 							local thisthisresult = result[#result][2]
 
-							for a,b in ipairs(fgroupmembers) do
-								if testcond(d[2],b,nil,nil,nil,nil,checkedconds) then
+							for a, b in ipairs(fgroupmembers) do
+								if testcond(d[2], b, nil, nil, nil, nil, checkedconds) then
 									local unit = mmf.newObject(b)
 
 									if (unit.flags[DEAD] == false) then
 										local valid = true
-										for e,f in ipairs(ignorethese) do
+										for e, f in ipairs(ignorethese) do
 											if (f == b) then
 												valid = false
 												break
@@ -889,16 +903,16 @@ function getunitswithverb(rule2,ignorethese_,checkedconds)
 					local empties = findempty()
 
 					if (#empties > 0) then
-						for c,d in ipairs(v) do
-							table.insert(result, {d[1],{},name})
+						for c, d in ipairs(v) do
+							table.insert(result, { d[1], {}, name })
 
-							for e,f in ipairs(empties) do
+							for e, f in ipairs(empties) do
 								local x = math.floor(f % roomsizex)
 								local y = math.floor(f / roomsizex)
 
-								if testcond(d[2],2,x,y,nil,nil,checkedconds) then
+								if testcond(d[2], 2, x, y, nil, nil, checkedconds) then
 									local valid = true
-									for g,h in ipairs(ignorethese) do
+									for g, h in ipairs(ignorethese) do
 										if (f == h) then
 											valid = false
 											break

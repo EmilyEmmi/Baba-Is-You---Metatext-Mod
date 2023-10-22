@@ -1,0 +1,128 @@
+So this is all of the technical info about the RPG easter egg.
+
+When you start the battle, the party layout is as follows:
+KEKE FOFO BABA JIJI
+
+and the enemy layout is as follows:
+RED DRAGON
+
+BABA moves first due to their dash ability. Now for the stats and stuff:
+
+--------------------------------
+BABA:
+HP: 1300/1300 ; HP is hit points, of course.
+SP: 900/1000 ; SP is special points, to use Abilities. 100 was spent on DASH in the overworld.
+Level: 26 ; This is not relevant.
+ATK: 52 ; This is how much damage is dealt with no weapons, armor, etc
+DEF: 10 ; Subtracts from damage dealt
+TYPE: Normal ; Type used for damage, and weaponless attacks
+Weapon: Unlegendary Sword ; A weapon adds ATK, and may also change its type.
+	ATK: 50
+	TYPE: Normal
+Armor: Sneaking Crown
+	Effect: Boosts overworld speed ; No overworld, so this does nothing
+Unequiped Armor: Fire Wig
+	Effect: Reduces Fire type damage, such as from Angry Stomp or Annoyed Slap, by 50%.
+Abilities:
+	Dash (100 SP) - Lets the user move twice next turn. The user's extra attack always occurs first.
+	Has no effect if used twice. This extra turn is skipped if Charmed.
+--------------------------------
+KEKE:
+HP: 1250/1250
+SP: 1200/1200
+Level: 25
+ATK: 67
+DEF: 0
+TYPE: Normal
+Weapon: Rythstone Magiwand
+	ATK: 30
+	TYPE: Normal
+Armor: Wizard Robe
+	Effect: Reduces SP cost of abilities by 20%.
+Abilities:
+	Revive (200 SP, 160 with robe) - Has a 50% chance of reviving a fallen ally with 1% of their maximum HP.
+	Float (125 SP, 100 with robe) - All members of a selected team float for 3 turns, which makes them immune to Floor Is Lava.
+	The team does not take damage from Floor Is Lava on the turn it wears off.
+--------------------------------
+FOFO:
+HP: 1200/1200
+SP: 1100/1300 ; 200 was spent on HIDE on the overworld.
+Level: 24
+ATK: 47
+DEF: 0
+TYPE: Normal
+RESISTS: Dance ; Fiery Jig is twice as likely to fail (80% to 40%)
+Weapon: NES Mouse
+	ATK: 60
+	TYPE: Normal
+Armor: Mega Baret
+	Effect: Adds 10 to DEF.
+Abilities:
+	Happy Song (100 SP) - Adds 2 to Happy value.
+	The Happy value increases the effect of the Firehydrant Spellstone by 50% multipled by the value.
+	The Happy value decreases by 1 at the end of each turn.
+	Hide (200 SP) - Makes a team invisible for one turn, making them immune to physical attacks.
+	Floor Is Lava and Fiery Jig still affect the team.
+--------------------------------
+JIJI:
+HP: 1250/1250
+SP: 1500/1500
+Level: 25
+ATK: 32
+DEF: 0
+TYPE: Normal
+Weapon: Pan of Pride
+	ATK: 35
+	TYPE: Normal
+Armor: Paper Plate Mask
+	Effect: Makes wearer immune to being Charmed.
+Abilities:
+	Cook (200 SP) - Cooks an item, changing its effect.
+	Cooking the Habanero results in Mango-Habanero Hot Sauce.
+	Cooking anything else results in Bad Cooking.
+	Pat (50 SP) - 80% chance of de-Charming a character. This character is then able to act.
+--------------------------------
+RED DRAGON:
+HP: 50000/50000
+SP: 30000/30000
+MAX CN: 10000 ; Maximum coolness. When this is reached, the dragon enters Cooled state.
+Level: 50
+ATK: 60
+DEF: 20
+TYPE: Fire
+EXTRAS: Vegan ; Extra data. Vegan characters will not consume animal products such as the Earwig of Shielding.
+Attacks/Abilities:
+	Angry Stomp (80%, uncooled only) - Deals 100 Fire type damage to one party member, before considering ATK, DEF, etc.
+	Annoyed Slap (80%, cooled only) - Deals 100 Fire type damage to one party member, before considering ATK, DEF, etc.
+	Fiery Jig (10%) - This move is always performed on Turn 1. Has an 80% chance of charming party members, before considering immunities and resistances.
+	Charmed characters are unable to act for 3 turns.
+	Floor Is Lava (10%) - The floor is changed into lava. All party members, unless floating, take 300 damage at the end of each turn for 3 turns.
+	This includes the turn it is performed.
+Sparing:
+	When fully cooled, the dragon has an 60% chance of joining the party if fed a Gourmet Dish, ending the battle.
+	This chance increases to 80% if the dish is SPICY.
+--------------------------------
+ITEMS:
+	Greater Tonic (x45) - Heals a character for 400 HP.
+	Earwig of Shielding (x1) - Creates a shield around a character, which nullifies 1 physical attack.
+	Vegan characters will not eat this.
+	Fire Hydrant Spellstone (x12) - Adds 300 Coolness to Fire-type characters, before considering Happy value or position.
+	Habanero (x1) - Heals a Fire-type character for 800 HP, but deals 200 damage to any other character.
+	It can be cooked to create Mango-Habanero Hot Sauce.
+	Mango Habanero Hot Sauce (x0) - Can be applied to a Gourmet Dish to make it SPICY.
+	This makes the dish only heal Fire-type characters and deal 200 damage to others.
+	Gourmet Mushroom Taco (x1) - Heals 1000 HP. Also a Gourmet Dish.
+--------------------------------
+And finally, a brief explanation of the Position system.
+
+Characters attack in order from front to back (left to right, 1 to 4).
+Characters in the front:
+	Deal 20% more damage
+	Take 20% more damage
+	Have a 20% higher chance of their own attacking spells succeeding, such as Fiery Jig.
+	Have a 20% higher chance of others' attacking spells succeeding, such as Fiery Jig.
+	Cool enemies 20% more
+	Get cooled 20% more
+	Can't change armor or weapon
+
+All other positions have no special effects.

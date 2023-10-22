@@ -308,11 +308,11 @@ function conversion(dolevels_)
 			local name = words[1]
 			local thing = words[3]
 
-      if (not dolevels) and (operator == "is" or operator == "become") and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and ((thing ~= "not " .. name) and (thing ~= "all") and (thing ~= "text") and (thing ~= "revert") and (thing ~= "meta") and (thing ~= "unmeta")) and unitreference[thing] == nil and string.sub(thing,1,5) == "text_" and ((unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
-        tryautogenerate(thing)
-      elseif (not dolevels) and operator == "write" and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and (thing ~= "not " .. name) and unitreference["text_" .. thing] == nil and string.sub(thing,1,5) == "text_" and ((unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
-        tryautogenerate("text_" .. thing)
-      end
+			if (not dolevels) and (operator == "is" or operator == "become") and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and ((thing ~= "not " .. name) and (thing ~= "all") and (thing ~= "text") and (thing ~= "revert") and (thing ~= "meta") and (thing ~= "unmeta")) and unitreference[thing] == nil and string.sub(thing,1,5) == "text_" and ((unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
+				tryautogenerate(thing)
+			elseif (not dolevels) and operator == "write" and name ~= "text" and (string.sub(name,1,4)) ~= "meta" and (thing ~= "not " .. name) and unitreference["text_" .. thing] == nil and string.sub(thing,1,5) == "text_" and ((unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
+				tryautogenerate("text_" .. thing)
+			end
 			if (name ~= "text") and (string.sub(name,1,4) ~= "meta") and ((getmat(thing) ~= nil) or (thing == "not " .. name) or (thing == "all") or (unitreference[thing] ~= nil) or ((thing == "text") and (unitreference["text_text"] ~= nil)) or (thing == "revert") or (thing == "meta") or (thing == "unmeta") or ((string.sub(thing,1,4) == "meta") and (unitreference["text_" .. thing] ~= nil)) or ((operator == "write") and getmat_text("text_" .. name))) then
 				if (featureindex[name] ~= nil) and (alreadydone[name] == nil) then
 					alreadydone[name] = 1
@@ -362,37 +362,48 @@ function conversion(dolevels_)
 							if (findnoun(object,nlist.brief) == false) and (object ~= "word") and (object ~= "text") and (object ~= "meta") and (object ~= "unmeta") then
 								table.insert(conversions, v3)
 							elseif (object == "all") then
-                --[[
-                addaction(0,{"createall",{name,conds},dolevels})
-                createall({name,conds})
-                ]]--
-                table.insert(conversions, {"createall",conds})
+								--[[
+								addaction(0,{"createall",{name,conds},dolevels})
+								createall({name,conds})
+								]]--
+								table.insert(conversions, {"createall",conds})
 							elseif (object == "text") or (object == "meta") then
-								table.insert(conversions, {"text_" .. name,conds})
-                if string.sub(name,1,5) == "text_" and unitreference["text_" .. name] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
-                  tryautogenerate("text_" .. name,name)
-                end
-              elseif (object == "unmeta") and string.sub(name,1,5) == "text_" then
-                table.insert(conversions, {string.sub(name,6),conds})
-                if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
-                  tryautogenerate(string.sub(name,6))
-                end
-              elseif (string.sub(object,1,4) == "meta") then
-                local level = string.sub(object,5)
-                if tonumber(level) ~= nil and tonumber(level) >= -1 then
-                  local basename,_ = string.gsub(name,"text_","")
-                  if basename == "" then
-                    basename = "text_"
-                  end
-                  local newname = string.rep("text_",level + 1) .. basename
-                  table.insert(conversions, {newname,conds})
-                  if tonumber(level) >= 0 and unitreference[newname] == nil and ((unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
-                    if string.sub(newname,1,5) == "text_" then
-                      tryautogenerate(newname)
-                    end
-                  end
-                end
-              end
+								local valid = true -- don't attempt conversion if the object does not exist
+								if string.sub(name,1,5) == "text_" and unitreference["text_" .. name] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
+									valid = tryautogenerate("text_" .. name,name)
+								end
+								if valid then
+									table.insert(conversions, {"text_" .. name,conds})
+								end
+							elseif (object == "unmeta") and string.sub(name,1,5) == "text_" then
+								local valid = true -- don't attempt conversion if the object does not exist
+								if string.sub(name,6,10) == "text_" and unitreference[string.sub(name,6)] == nil and unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0 then
+									valid = tryautogenerate(string.sub(name,6))
+								end
+								if valid then
+									table.insert(conversions, {string.sub(name,6),conds})
+								end
+							elseif (string.sub(object,1,4) == "meta") then
+								local level = string.sub(object,5)
+								if tonumber(level) ~= nil and tonumber(level) >= -1 then
+									local basename,_ = string.gsub(name,"text_","")
+									if basename == "" then
+										basename = "text_"
+									end
+									local newname = string.rep("text_",level + 1) .. basename
+									local valid = true -- don't attempt conversion the if object does not exist
+									if tonumber(level) >= 0 and unitreference[newname] == nil and ((unitreference[name] ~= nil and unitlists[name] ~= nil and #unitlists[name] > 0) or name == "empty" or name == "level") then
+										if string.sub(newname,1,5) == "text_" then
+											valid = tryautogenerate(newname)
+										else
+											valid = false
+										end
+									end
+									if valid then
+										table.insert(conversions, {newname,conds})
+									end
+								end
+							end
 						elseif (op == "write") then
 							table.insert(conversions, v3)
 						end
