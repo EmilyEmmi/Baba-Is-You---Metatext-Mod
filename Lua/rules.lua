@@ -1712,7 +1712,7 @@ function code(alreadyrun_)
 							--MF_alert("Doing firstwords check for " .. unit.strings[UNITNAME] .. ", dir " .. tostring(i))
 
 							local hm = codecheck(unitid,ox,oy,i)
-							local hm2 = codecheck(unitid,nox,noy,i)
+							local hm2 = codecheck(unitid,nox,noy,i,false,true) -- count letters
 
 							if (#hm == 0) and (#hm2 > 0) then
 								--MF_alert("Added " .. unit.strings[UNITNAME] .. " to firstwords, dir " .. tostring(i))
@@ -1834,7 +1834,8 @@ function code(alreadyrun_)
 		end
 	end
 end
-function codecheck(unitid,ox,oy,cdir_,ignore_end_)
+-- also fixes text prefix with letters (that's what parse_letter is for)
+function codecheck(unitid,ox,oy,cdir_,ignore_end_,parse_letter)
 	local unit = mmf.newObject(unitid)
 	local ux,uy = unit.values[XPOS],unit.values[YPOS]
 	local x = unit.values[XPOS] + ox
@@ -1860,7 +1861,7 @@ function codecheck(unitid,ox,oy,cdir_,ignore_end_)
 			local v = mmf.newObject(b)
 			local w = 1
 
-			if (v.values[TYPE] ~= 5) and (v.flags[DEAD] == false) then
+			if (v.values[TYPE] ~= 5 or parse_letter) and (v.flags[DEAD] == false) then -- letter texts are considered when NOT a firstword
 				if (v.strings[UNITTYPE] == "text") and not metatext_textisword then
 					table.insert(result, {{b}, w, v.strings[NAME], v.values[TYPE], cdir})
 				else

@@ -108,12 +108,10 @@ function settingbutton()
 end
 
 -- Add the button. It's done the same way Plasma did it.
-if old_menu_level_enter == nil then
-  old_menu_level_enter = menufuncs.level.enter
-end
+local old = menufuncs.level.enter
 menufuncs.level.enter = function(...)
   settingbutton()
-  old_menu_level_enter(...)
+  old(...)
 end
 settingbutton() -- This doesn't work the first time for some reason, so we have to do this.
 
