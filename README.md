@@ -30,7 +30,7 @@ There are multiple ways to get metatext in your level.
 - There's also an option for creating additional metatext on the fly. More info [here](exfeatures.md).
 
 **Notes:**
-- For the TEXT_ prefix to work with letters, the letters need to have their metatext for them in the palette. This isn't required for other text types.
+~~- For the TEXT_ prefix to work with letters, the letters need to have their metatext for them in the palette. This isn't required for other text types.~~ This has been fixed!
 - This mod changes way too many functions, so it is most likely imcompatible with any mod that overrides functions, such as Plasmaflare's Modpack. Condition mods that don't override functions may also not work correctly.
 - If you find any bugs, let me know.
 

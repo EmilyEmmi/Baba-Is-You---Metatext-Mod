@@ -1,4 +1,4 @@
--- This is an optional file that adds two new objects. It is not needed for the mod to work.
+-- This is adds the meta and unmeta properties, as well as the meta# nouns.
 
 -- Adds object to editor.
 table.insert(editor_objlist_order,"text_meta")
